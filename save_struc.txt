@@ -1,0 +1,21 @@
+--[[pod_format="raw",created="2025-11-20 20:41:27",modified="2025-11-20 20:41:27",revision=0]]
+## SAVE SYSTEM STRUCTURE
+
+-- POD File
+cada p8 tendra una tabla con la id definida en
+`cartdata(id_str)` que tendra un array de valores
+numericos con indices del 0 al 63
+
+-- Cargado
+si un p8 tiene un `cartdata(id_str)` el emulador
+cargara la ruta `/appdata/p8runner/cartdata.pod` y 
+buscara la id definida anteriormente, si no la
+encuentra crea una nueva tabla con la id, la tabla
+se cargara en memoria como `env._cartdata` donde
+con `dset` y `dget` se modificara dicha tabla y tambien 
+se guardara la id para el guardado
+
+-- Guardado
+Si el usuario carga otro p8 o detiene el existente
+la tabla se guardara dentro de la ruta con la id 
+guardada en memoria

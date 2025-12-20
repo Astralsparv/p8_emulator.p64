@@ -1,9 +1,9 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-01 21:40:15",prog="bbs://strawberry_src.p64",revision=72,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-20 23:11:23",prog="bbs://strawberry_src.p64",revision=89,xstickers={}]]
 -- core.lua
 cdata={}
 function load_p8(p8path)
 	local file=fetch(p8path)
-	if(not file)notify("could not load: "..p8path)return nil
+	if(not file)notify("could not load: "..p8path) return nil
 	
 	--extract sections
 	local code=extract_section(file,"__lua__")or file
@@ -18,17 +18,13 @@ function load_p8(p8path)
 	--create env
 	local env={}
 	for k,v in pairs(p8env) do env[k]=v end
-	env._execute,env._time=function()end,0
 	env._menuitems={}
 	--load spritesheet (credits to @pancelor)
 	local sizestr=string.format("%02x%02x",mid(0,255,128),mid(0,255,128))
 	env._spritesheet=userdata("[gfx]"..sizestr..gfx.."[/gfx]")
+	env._time=0
 	env.spr=function(i,x,y,w,h,fx,fy)w=(w or 1)*8 h=(h or 1)*8 local bx=(fx and 1) or 0 local by=(fy and 1) or 0 sspr(env._spritesheet,(i%16)*8,flr(i/16)*8,w,h,x+bx*w,y+by*h,w*(1-2*bx),h*(1-2*by))end
 	env.sspr=function(sx,sy,sw,sh,dx,dy,dw,dh,fw,fh)sspr(env._spritesheet,sx,sy,sw,sh,dx,dy,dw,dh,fw,fh)end
-	env.menuitem=function(idx,label,action)if(not label and not action)then del(env._menuitems,idx)else env._menuitems[idx]={label=label,action=action,fenv=true}end pmenu:refresh()end
-	env.cartdata=function(id)env._cdata=cdata:load(id)end
-	env.dget=function(i)return env._cdata[i+1]end
-	env.dset=function(i,val) if(type(val)=="number")then env._cdata[i+1]=val end end
 	env.time=function()return env._time end
 	env.t=env.time
 	
@@ -51,7 +47,7 @@ function load_p8(p8path)
 	--execute `_init` if exists
 	if(env._init)env._init()
 	srand(flr(rnd(0x7fff)))
-	pmenu:refresh()
+--	pmenu:refresh()
 	return env
 end
 
