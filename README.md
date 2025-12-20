@@ -1,2 +1,3 @@
-# P8-Runner---PICO-8-emulator-within-PicoTron-WIP-
+# P8 Emulator
+
 A functional Pico8 emulator within Picotron
