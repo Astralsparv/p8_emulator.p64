@@ -1,0 +1,10 @@
+--[[pod_format="raw",created="2025-11-18 23:36:32",modified="2025-11-18 23:36:32",revision=0]]
+--[[pod_type="gfx"]]unpod("b64:bHo0AHoAAACpAAAA8SNweHUAQyA3BwQAsQAhAPEUABE3ETchCCE3ERcBFwE3ETcRRwE3IRcBFxEHEQcRCQcPDxkACQIAEDEfAJJHAUcBCicPDgE6AAQCADAnAQBAABAxQAA-CwcNPQAEcRcBEAFHIQxoADM3ARcCABBHBgCAQRBhACEA8RU=") 
+User Manual
+
+P8 Runner is the first PICO-8 emulator for Picotron 
+where you can load a limited number of games (limited 
+because there are still things to polish and add)
+
+
+

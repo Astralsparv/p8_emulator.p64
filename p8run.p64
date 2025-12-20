@@ -1,0 +1,299 @@
+picotron cartridge // www.picotron.net
+version 2
+
+:: gfx/
+:: map/
+:: sfx/
+:: env.lua
+--[[pod_format="raw",created="2025-11-08 13:49:25",modified="2025-11-21 10:24:46",prog="bbs://strawberry_src.p64",revision=148,xstickers={}]]
+-- env.lua
+p8env={
+	--math
+	abs=abs,
+	sgn=sgn,flr=flr,
+	ceil=ceil,min=min,
+	mid=mid,max=max,
+	sqrt=sqrt,cos=cos,
+	sin=sin,atan2=atan2,
+	rnd=rnd,srand=srand,
+	--data
+	chr=chr,
+	ord=ord,split=split,
+	sub=sub,tostr=tostr,
+	tonum=tonum,add=add,
+	del=del,deli=deli,
+	all=all,ipairs=ipairs,
+	pairs=pairs,foreach=foreach,
+	unpack=unpack,type=type,
+	--input
+	btn=btn,btnp=btnp,
+	--gfx
+	cls=cls,
+	camera=camera,pget=pget,
+	pset=pset,line=line,
+	rect=rect,rectfill=rectfill,
+	circ=circ,circfill=circfill,
+	oval=oval,ovalfill=ovalfill,
+	print=print,color=color,
+	pal=pal,palt=palt,	
+	--misc/corutines
+	count=count,music=music,
+	sfx=sfx,cocreate=cocreate,
+	coresume=coresume,costatus=costatus,
+	--spr, sspr, time, menuitem and cartdata are in `core.lua`
+}
+
+local _stat_switch={
+	[1]=stat, --cpu (total)
+	[2]=stat, --cpu (sys)
+	[4]=get_clipboard,
+	[7]=stat, --framerate
+	[30]=function()return peektext()!=nil end,
+	[31]=function()return readtext(),0 end,
+	[32]=function()return select(1,mouse())end, --mouse_x
+	[33]=function()return select(2,mouse())end, --mouse_y
+	[34]=function()return select(3,mouse())end, --mouse_b
+	[35]=function()return select(4,mouse())end, --wheel_x
+	[36]=function()return select(5,mouse())end, --wheel_y
+}
+
+function p8env.stat(id)
+	local fn=_stat_switch[id]
+	if(fn)then return fn(id)else return 0 end
+end
+:: main.lua
+--[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-11-27 23:48:30",prog="bbs://strawberry_src.p64",revision=418,xstickers={}]]
+-- main.lua
+include"env.lua"
+include"core.lua"
+
+p8=nil
+p8path=""
+frame_counter=0
+pmenu={}
+function _init()
+	cmd={}
+	window{title="P8 Runner",width=128,height=128,resizeable=false,autofocus=true,cursor=0}
+	menuitem{id=1,label="Return to CMD",shortcut="Q",action=function() p8=nil end}
+	fetch("/system/fonts/p8.font"):poke(0x4000)
+	pmenu:init()
+	poke4(0x5000+48*4, --set pal 48-63 to the p8 "secret colors"
+		0x291814,0x111d35,0x422136,0x125359,
+		0x742f29,0x49333b,0xa28879,0xf3ef7d,
+		0xbe1250,0xff6c24,0xa8e72e,0x00b543,
+		0x065ab5,0x754665,0xff6e59,0xff9d81)--credits to @pancelor
+end
+function _update()
+	local factor=2
+	frame_counter+=1
+	if(not fstat("/appdata/p8runner"))mkdir("/appdata/p8runner")
+	if(not p8)then
+		cls()
+		spr(1,1,1)
+	else
+		if(pmenu.bool)then
+			pmenu:prc()
+		else
+			p8._execute()
+		end
+	end
+	if(btnp(6))pmenu.bool=not pmenu.bool pmenu.cursor=1
+end
+
+on_event("drop_items",function(msg)
+	assert(#msg.items>0)
+	local path=msg.items[1].fullpath
+
+	if(not path)then
+		add(cmd,"\fesource error\n\f2| \f7invalid path")
+		return
+	end
+
+	if(sub(path,-3)==".p8")then
+		p8=load_p8(path)
+		if(p8)then
+			pmenu:init()
+			p8path=path
+			p8.name=sub(p8path,p8path:find("[^/\\]+$"))
+			notify("cart loaded: "..path)
+		else
+			add(cmd,"\feerror loading cart\f6")
+		end
+		if(p8)window{title=p8.name}
+	else
+		notify("invalid or incompatible file format")
+	end
+end)
+
+function pmenu:init()
+	pmenu.bool=false
+	pmenu.cursor=1
+	pmenu.items={
+		{label="resume",action=function()self.bool=false end},
+		{label="reset cart",action=function()cdata:save()p8=load_p8(p8path)self:init()end},
+		{label="quit cart",action=function()cdata:save()p8=nil self:init()window{title="P8 Runner"}end},
+	}
+end
+
+function pmenu:prc()
+	local n=#self.items
+	--update
+	if(btnp(2))self.cursor-=1
+	if(btnp(3))self.cursor+=1
+	if self.cursor>n then self.cursor=1
+	elseif self.cursor<1 then self.cursor=n end
+	if(btnp(4)or btnp(5))then
+		local it=self.items[self.cursor]
+		if(it and it.action)then
+			it.action()
+			self.bool=false
+		end
+	end
+	--draw
+	local mh=n*8+4*2
+	local top=(128-mh)/2
+	local bottom=top+mh
+	rectfill(21,top,101,bottom,32)
+	rect(22,top+1,100,bottom-1,7)
+
+	for i=1,n do
+		local p=self.items[i]
+		if(p)then
+			local y=top+4+(i-1)*8
+			print((i==self.cursor and">"or" ")..p.label,27,y+2,7)
+		end
+	end
+end
+
+
+function pmenu:refresh()
+	self.items={{label="resume",action=function()self.bool=false end}}
+	if(p8 and #p8._menuitems>0)then
+		for i=1,#p8._menuitems do
+			add(self.items,p8._menuitems[i])
+		end
+	end
+	add(self.items,{label="reset cart",action=function()cdata:save()p8=load_p8(p8path)self:init()end})
+	add(self.items,{label="quit cart",action=function()cdata:save()p8=nil self:init()window{title="P8 Runner"}end})
+end
+:: manual.txt
+--[[pod_format="raw",created="2025-11-18 23:36:32",modified="2025-11-18 23:36:32",revision=0]]
+--[[pod_type="gfx"]]unpod("b64:bHo0AHoAAACpAAAA8SNweHUAQyA3BwQAsQAhAPEUABE3ETchCCE3ERcBFwE3ETcRRwE3IRcBFxEHEQcRCQcPDxkACQIAEDEfAJJHAUcBCicPDgE6AAQCADAnAQBAABAxQAA-CwcNPQAEcRcBEAFHIQxoADM3ARcCABBHBgCAQRBhACEA8RU=") 
+User Manual
+
+P8 Runner is the first PICO-8 emulator for Picotron 
+where you can load a limited number of games (limited 
+because there are still things to polish and add)
+
+
+
+
+:: save_struc.txt
+--[[pod_format="raw",created="2025-11-20 20:41:27",modified="2025-11-20 20:41:27",revision=0]]
+## SAVE SYSTEM STRUCTURE
+
+-- POD File
+cada p8 tendra una tabla con la id definida en
+`cartdata(id_str)` que tendra un array de valores
+numericos con indices del 0 al 63
+
+-- Cargado
+si un p8 tiene un `cartdata(id_str)` el emulador
+cargara la ruta `/appdata/p8runner/cartdata.pod` y 
+buscara la id definida anteriormente, si no la
+encuentra crea una nueva tabla con la id, la tabla
+se cargara en memoria como `env._cartdata` donde
+con `dset` y `dget` se modificara dicha tabla y tambien 
+se guardara la id para el guardado
+
+-- Guardado
+Si el usuario carga otro p8 o detiene el existente
+la tabla se guardara dentro de la ruta con la id 
+guardada en memoria
+:: .info.pod
+--[[pod,author="wasdly",created="2025-11-03 11:55:22",icon=userdata("u8",16,16,"00000000000000000000000000000000000000000000000000000000000000000000000000000001010000000000000000000000000001080801000000000000000000000001010808010100000000000000000001090907070f0f01000000000000000101090907070f0f01010000000000010a0a0707070707070e0e0100000000010a0a0707070707070e0e01000000000001010b0b07070d0d010100000000000000010b0b07070d0d0100000000000000000001010c0c01010000000000000000000000010c0c01000000000000000000000000000101000000000000000000000000000000000000000000000000000000000000000000000000000000"),modified="2025-11-19 14:51:27",notes="A PICO-8 Interpreter/Emulator for\nPicoTron",runtime=23,title="P8 Runner",version="0.1.0",workspaces={}]]
+:: core.lua
+b64$LS1bW3BvZF9mb3JtYXQ9InJhdyIsY3JlYXRlZD0iMjAyNS0xMS0xOSAxODozNDoxNCIsbW9k
+aWZpZWQ9IjIwMjUtMTItMDEgMjE6NDA6MTUiLHByb2c9ImJiczovL3N0cmF3YmVycnlfc3JjLnA2
+NCIscmV2aXNpb249NzIseHN0aWNrZXJzPXt9XV0KLS0gY29yZS5sdWEKY2RhdGE9e30KZnVuY3Rp
+b24gbG9hZF9wOChwOHBhdGgpCglsb2NhbCBmaWxlPWZldGNoKHA4cGF0aCkKCWlmKG5vdCBmaWxl
+KW5vdGlmeSgiY291bGQgbm90IGxvYWQ6ICIuLnA4cGF0aClyZXR1cm4gbmlsCgkKCS0tZXh0cmFj
+dCBzZWN0aW9ucwoJbG9jYWwgY29kZT1leHRyYWN0X3NlY3Rpb24oZmlsZSwiX19sdWFfXyIpb3Ig
+ZmlsZQoJbG9jYWwgZ2Z4PWV4dHJhY3Rfc2VjdGlvbihmaWxlLCJfX2dmeF9fIilvciAiIgoJY29k
+ZT1jb2RlOmdzdWIoIosiLCIwIik6Z3N1YigikSIsIjEiKTpnc3ViKCKUIiwiMiIpOmdzdWIoIoMi
+LCIzIikKCWlmIGNvZGU6ZmluZCgiJWZbJWFdZ290byVmWyVBXSIpIHRoZW4KCQlub3RpZnkoIidn
+b3RvJyBpcyBub3Qgc3VwcG9ydGVkIGluIFA4IFJ1bm5lciIpCgkJcmV0dXJuIG5pbAoJZW5kCgln
+Zng9Z2Z4OmdzdWIoIlxuIiwiIikKCQoJLS1jcmVhdGUgZW52Cglsb2NhbCBlbnY9e30KCWZvciBr
+LHYgaW4gcGFpcnMocDhlbnYpIGRvIGVudltrXT12IGVuZAoJZW52Ll9leGVjdXRlLGVudi5fdGlt
+ZT1mdW5jdGlvbigpZW5kLDAKCWVudi5fbWVudWl0ZW1zPXt9CgktLWxvYWQgc3ByaXRlc2hlZXQg
+KGNyZWRpdHMgdG8gQHBhbmNlbG9yKQoJbG9jYWwgc2l6ZXN0cj1zdHJpbmcuZm9ybWF0KCIlMDJ4
+JTAyeCIsbWlkKDAsMjU1LDEyOCksbWlkKDAsMjU1LDEyOCkpCgllbnYuX3Nwcml0ZXNoZWV0PXVz
+ZXJkYXRhKCJbZ2Z4XSIuLnNpemVzdHIuLmdmeC4uIlsvZ2Z4XSIpCgllbnYuc3ByPWZ1bmN0aW9u
+KGkseCx5LHcsaCxmeCxmeSl3PSh3IG9yIDEpKjggaD0oaCBvciAxKSo4IGxvY2FsIGJ4PShmeCBh
+bmQgMSkgb3IgMCBsb2NhbCBieT0oZnkgYW5kIDEpIG9yIDAgc3NwcihlbnYuX3Nwcml0ZXNoZWV0
+LChpJTE2KSo4LGZscihpLzE2KSo4LHcsaCx4K2J4KncseStieSpoLHcqKDEtMipieCksaCooMS0y
+KmJ5KSllbmQKCWVudi5zc3ByPWZ1bmN0aW9uKHN4LHN5LHN3LHNoLGR4LGR5LGR3LGRoLGZ3LGZo
+KXNzcHIoZW52Ll9zcHJpdGVzaGVldCxzeCxzeSxzdyxzaCxkeCxkeSxkdyxkaCxmdyxmaCllbmQK
+CWVudi5tZW51aXRlbT1mdW5jdGlvbihpZHgsbGFiZWwsYWN0aW9uKWlmKG5vdCBsYWJlbCBhbmQg
+bm90IGFjdGlvbil0aGVuIGRlbChlbnYuX21lbnVpdGVtcyxpZHgpZWxzZSBlbnYuX21lbnVpdGVt
+c1tpZHhdPXtsYWJlbD1sYWJlbCxhY3Rpb249YWN0aW9uLGZlbnY9dHJ1ZX1lbmQgcG1lbnU6cmVm
+cmVzaCgpZW5kCgllbnYuY2FydGRhdGE9ZnVuY3Rpb24oaWQpZW52Ll9jZGF0YT1jZGF0YTpsb2Fk
+KGlkKWVuZAoJZW52LmRnZXQ9ZnVuY3Rpb24oaSlyZXR1cm4gZW52Ll9jZGF0YVtpKzFdZW5kCgll
+bnYuZHNldD1mdW5jdGlvbihpLHZhbCkgaWYodHlwZSh2YWwpPT0ibnVtYmVyIil0aGVuIGVudi5f
+Y2RhdGFbaSsxXT12YWwgZW5kIGVuZAoJZW52LnRpbWU9ZnVuY3Rpb24oKXJldHVybiBlbnYuX3Rp
+bWUgZW5kCgllbnYudD1lbnYudGltZQoJCgktLWNvbXBpbGUgYW5kIHJ1biBjb2RlCglsb2NhbCBm
+bixlcnI9bG9hZChjb2RlLHA4cGF0aCwidCIsZW52KQoJaWYobm90IGZuKWVycm9yKCJjb21waWxl
+IGVycm9yOiAiLi5lcnIpCglmbigpCgkKCS0tY2hlY2sgYF91cGRhdGVgIGFuZC9vciBgX2RyYXdg
+CglpZihlbnYuX3VwZGF0ZTYwKXRoZW4KCQllbnYuX2RyYXc9ZW52Ll9kcmF3IG9yIGZ1bmN0aW9u
+KCllbmQKCQllbnYuX2V4ZWN1dGU9ZnVuY3Rpb24oKWVudi5fdXBkYXRlNjAoKWVudi5fZHJhdygp
+ZW52Ll90aW1lKz0wLjAxNjcgZW5kCgllbHNlaWYoZW52Ll91cGRhdGUpdGhlbgoJCWVudi5fZHJh
+dz1lbnYuX2RyYXcgb3IgZnVuY3Rpb24oKWVuZAoJCWVudi5fZXhlY3V0ZT1mdW5jdGlvbigpaWYo
+ZnJhbWVfY291bnRlciUyPT0wKXRoZW4gZW52Ll91cGRhdGUoKWVudi5fZHJhdygpZW52Ll90aW1l
+Kz0wLjAzMzMgZW5kIGVuZAoJZWxzZWlmKGVudi5fZHJhdyl0aGVuCgkJZW52Ll9leGVjdXRlPWZ1
+bmN0aW9uKClpZihmcmFtZV9jb3VudGVyJTI9PTApdGhlbiBlbnYuX2RyYXcoKWVudi5fdGltZSs9
+MC4wMzMzIGVuZCBlbmQKCWVuZAoJCgktLWV4ZWN1dGUgYF9pbml0YCBpZiBleGlzdHMKCWlmKGVu
+di5faW5pdCllbnYuX2luaXQoKQoJc3JhbmQoZmxyKHJuZCgweDdmZmYpKSkKCXBtZW51OnJlZnJl
+c2goKQoJcmV0dXJuIGVudgplbmQKCmZ1bmN0aW9uIGV4dHJhY3Rfc2VjdGlvbihmaWxlc3RyLGhl
+YWRlcikKCWxvY2FsIGEwLGExPWZpbGVzdHI6ZmluZChoZWFkZXIpCglpZiBub3QgYTAgdGhlbiBy
+ZXR1cm4gbmlsIGVuZAoJbG9jYWwgYjA9ZmlsZXN0cjpmaW5kKCJcbl9fWyV3X10rX19cbiIsYTEr
+MSkKCWxvY2FsIGkwPWExKzEKCWxvY2FsIGkxPWIwIGFuZCAoYjAtMSlvciAjZmlsZXN0cgoJcmV0
+dXJuIGZpbGVzdHI6c3ViKGkwLGkxKQplbmQKCmZ1bmN0aW9uIGNkYXRhOmxvYWQoaWQpCglsb2Nh
+bCB0Ymw9e30KCWlmKG5vdCBmc3RhdCgiL2FwcGRhdGEvcDhydW5uZXIvY2RhdGEucG9kIikpc3Rv
+cmUoIi9hcHBkYXRhL3A4cnVubmVyL2NkYXRhLnBvZCIse30pCglpZihub3QgY2RhdGEuZGF0YWJh
+c2UpdGhlbgoJCWRiPWZldGNoKCIvYXBwZGF0YS9wOHJ1bm5lci9jZGF0YS5wb2QiKQoJCWlmKGRi
+KXRoZW4KCQkJY2RhdGEuZGF0YWJhc2U9ZGIKCQllbHNlCgkJCWNkYXRhLmRhdGFiYXNlPXt9CgkJ
+ZW5kCgllbmQKCWlmKG5vdCBjZGF0YS5kYXRhYmFzZVtpZF0pdGhlbgoJCWZvciBpPTAsNjMgZG8g
+YWRkKHRibCwwKWVuZAoJCWNkYXRhLmRhdGFiYXNlW2lkXT10YmwKCWVuZAoJcmV0dXJuIGNkYXRh
+LmRhdGFiYXNlW2lkXQplbmQKCmZ1bmN0aW9uIGNkYXRhOnNhdmUoKQoJaWYodHlwZShjZGF0YS5k
+YXRhYmFzZSk9PSJ0YWJsZSIpdGhlbgoJCXN0b3JlKCIvYXBwZGF0YS9wOHJ1bm5lci9jZGF0YS5w
+b2QiLGNkYXRhLmRhdGFiYXNlKQoJZWxzZQoJCW5vdGlmeSgiW0NEQVRBXTogbm8gZGF0YWJhc2Ug
+dG8gc2F2ZSIpCgllbmQKZW5k
+:: gfx/.info.pod
+--[[pod,created="2025-11-03 11:55:22",modified="2025-11-08 13:48:23"]]
+:: gfx/0.gfx
+b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNS0x
+MS0yNyAyMToxNDowNyIscmV2aXNpb249OV1dbHo0ALgBAAB7MgAA8yF7WzBdPXtibXA9cHh1AEMg
+CAgE8AIHEAdAF1AXQAcQB-ACLGZsYWdzPTAscGFuX3gIANd5PTAsem9vbT0xNn0sPwDwADUFBAA3
+EDcgCCA3EBcAFwwA8QIQRwA3ABcAFxAHEAcQCQcPDxkACQIAwjAXAGcARwAKJw8OADgABAIAMCcg
+Nx8AbxAHEAsHDTkAAmA3MEcgDCBgAAFmAAECABBHBgAPuAALGTW3APAZNwcEALEAIQDxFAARNxE3
+IQghNxEXARcBNxE3EUcBNyEXARcRBxEHEb8AARkACQIAEDEfAEBHAUcBwQASAToABAIAMCcBAEAA
+EDFAAD8LBw09AARxFwEQAUchDGgAMzcBFwIAEEcGADBBEGGZAB8VzwAZ-xgKCgQwGHAYUBkXHw8w
+GRceEBpXHxcaVx0QGxcfDTAbFxxQHwxwFjBTAAspMTRUAPYCCAoEAF8gAA5WHgY-DgYeBj0EAL9W
+HgY3Bh5GDhBOEFMACxk4UgBfEBAE8PAxAP------------------------------------------
+---------------------xNQbT04fX0=
+:: map/.info.pod
+--[[pod,created="2025-11-03 11:55:22",modified="2025-11-08 13:48:23"]]
+:: map/0.map
+b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNS0w
+MS0xNyAxMDozNzo0NCIscmV2aXNpb249MV1dbHo0AFQAAABEEAAA8Ah7e2JtcD11c2VyZGF0YSgi
+aTE2IiwzMgMALyIwAQD--------------------7oSIpLHBhbl94PTAIANJ5PTAsdGlsZV9oPTE2
+CgBgdz0xNn19
+:: sfx/.info.pod
+--[[pod,created="2025-11-03 11:55:22",modified="2025-11-08 13:48:23"]]
+:: sfx/0.sfx
+b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTA3LTMxIDA4OjMwOjI4Iixtb2RpZmllZD0iMjAyNS0w
+Ny0zMSAwODozMDoyOCIscmV2aXNpb249MF1dbHo0AKAAAAALCgAA-zBweHUAAygAAAQABA9AEAIO
+AAGgASACoA4ADxAADfDKAQIDQA8PkAQFBgdADJAICQoLQAyQDwwPDQ8ODEAM8P8BAOv-J6oBEAYP
+MBABIAEgAfAAAhACDhABIA8hIAEwD0Dwww8oD--wxg-4Cg--D4AP9w8NAfAJARAGDjAA------_9
+H-8BAKzPyA9AAA8QQP--sPD-AQD-6lD-----KQ==
+:: [eoc]
