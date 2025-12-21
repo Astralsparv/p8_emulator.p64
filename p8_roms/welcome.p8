@@ -16,7 +16,8 @@ function _draw()
 	cursor(0,8)
 	print("welcome to p8 emulator for\npicotron!")
 	print("the cartridge has some p8 roms\nwithin for you to use.\n\n/p8_roms/")
-	print("drag and drop a .p8 file to run\nit!")
+	print("drag and drop/ctrl+o a .p8 file\nto run it!\n")
+	print("you can fullscreen in the\nsettings at:\n/appdata/p8_emulator/")
 end
 __gfx__
 01111111111110111011111111111111111111111111111111111100000000000000000000000000000000000000000000000000000000000000000000000000
