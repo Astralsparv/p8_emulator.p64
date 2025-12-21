@@ -1,5 +1,7 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 23:10:22",prog="bbs://strawberry_src.p64",revision=630,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 23:24:36",prog="bbs://strawberry_src.p64",revision=634,xstickers={}]]
 include "core/env.lua"
+
+local _time=0
 
 local frame_counter=0
 spritesheet={}
@@ -163,7 +165,7 @@ function load_p8(path)
 	spritesheet=ripSpritesheet(file)
 	ripGFF(file)
 	memmap(ripMap(file,spritesheet),0x100000)
-	env.time=function()return time end
+	env.time=function()return _time end
 	env.t=env.time
 	
 	--compile and run code
@@ -171,7 +173,7 @@ function load_p8(path)
 	if(not fn)error("compile error: "..err)
 	srand(flr(rnd(0x7fff)))
 	
-	time=0
+	_time=0
 	p8frame=userdata("u8",128,128)
 	frame_counter=0
 	fn()
@@ -195,19 +197,19 @@ function load_p8(path)
 			if(frame_counter%2==0)then
 				env._update()
 				env._draw()
-				time+=0.0333 
+				_time+=0.0333 
 			end
 		end
 	elseif(env._draw)then
 		env._execute=function()
 			if(frame_counter%2==0)then
 				env._draw()
-				time+=0.0333
+				_time+=0.0333
 			end
 		end
 	else
 		env._execute=function()
-			time+=0.0333 --still do this?
+			_time+=0.0333 --still do this?
 		end
 	end
 	
