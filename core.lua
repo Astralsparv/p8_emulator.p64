@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 20:57:42",prog="bbs://strawberry_src.p64",revision=518,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 21:10:41",prog="bbs://strawberry_src.p64",revision=546,xstickers={}]]
 -- core.lua
 cdata={}
 
@@ -74,19 +74,25 @@ local function ripMap(file)
 	--1 pixel = 4 bits (0-15), so half a byte
 	--spritesheet:get(x,y) == gets two pixels because get returns 1 byte
 	
+	local hit={}
 	for y=32,63 do
 		local sy=64+(y-32)*2
 		for x=0,127 do
 			--1 byte = 1 tile
-			local px=x*2
-			local low=spritesheet:get(px, sy)
-			local high=spritesheet:get(px+1, sy)
+			local offset=flr(x/64)
+			local px=(x%64)*2
+			local py=sy+offset
+			
+			local low=spritesheet:get(px, py)
+			local high=spritesheet:get(px+1, py)
 			local tile=low|(high << 4)
+			hit[sy]=true
 
 			ud:set(x,y,tile)
 		end
 	end
 	
+	printh(pod(hit))
 	return ud
 end
 
