@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 17:51:28",prog="bbs://strawberry_src.p64",revision=443,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 20:57:42",prog="bbs://strawberry_src.p64",revision=518,xstickers={}]]
 -- core.lua
 cdata={}
 
@@ -29,12 +29,19 @@ local function ripGFF(file) --sprite flags
 end
 
 local function ripSpritesheet(file)
-	local gfx=extract_section(file,"__gfx__")or ""
-	gfx=gfx:gsub("\n","")
+	local gfx=extract_section(file,"__gfx__")
+	if (not gfx) return userdata("u8",128,128)
+	gfx=gfx:split("\n",false)
 	
-	--load spritesheet (credits to @pancelor)
-	local sizestr=string.format("%02x%02x",mid(0,255,128),mid(0,255,128))
-	spritesheet=userdata("[gfx]"..sizestr..gfx.."[/gfx]")
+	spritesheet=userdata("u8",128,128)
+	
+	for y=0,127 do
+		local line=gfx[y+2] or ""
+		for x=0,127 do
+			local c=line:sub(x+1, x+1) or "0"
+			spritesheet:set(x, y, tonum("0x"..c))
+		end
+	end
 	
 	for i=0, 255 do
 		local x,y=(i%16)*8,flr(i/16)*8
@@ -68,14 +75,13 @@ local function ripMap(file)
 	--spritesheet:get(x,y) == gets two pixels because get returns 1 byte
 	
 	for y=32,63 do
-		local sy=64+(y-32)
+		local sy=64+(y-32)*2
 		for x=0,127 do
 			--1 byte = 1 tile
-			--2px = 1 tile
-			local bx=x\2
-			local b=tostr(spritesheet:get(bx, sy))..tostr(spritesheet:get(bx+1,sy))
-			
-			local tile=tonumber(b,16) or 0
+			local px=x*2
+			local low=spritesheet:get(px, sy)
+			local high=spritesheet:get(px+1, sy)
+			local tile=low|(high << 4)
 
 			ud:set(x,y,tile)
 		end

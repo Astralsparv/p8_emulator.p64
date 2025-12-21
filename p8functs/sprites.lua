@@ -1,13 +1,22 @@
---[[pod_format="raw",created="2025-12-21 15:10:09",modified="2025-12-21 16:26:04",revision=43]]
+--[[pod_format="raw",created="2025-12-21 15:10:09",modified="2025-12-21 20:45:57",revision=88]]
 --uses built in spritebank
+--some fixes applied through stuff found in Soupster's code
+--spr(i,x,y,w,h,fx,fy)
 p8env.spr=function(i,x,y,w,h,fx,fy)
+	i=i or 0
+	i\=1
+	x=x or 0
+	y=y or 0
 	w=(w or 1)*8
 	h=(h or 1)*8
-	local bx=(fx and 1) or 0
-	local by=(fy and 1) or 0
-	return sspr(spritesheet,(i%16)*8,flr(i/16)*8,w,h,x+bx*w,y+by*h,w*(1-2*bx),h*(1-2*by))
+	--sspr(userdata,sx,sy,sw,sh,dx,dy,dw,dh,fx,fy)
+	return sspr(spritesheet,(i%16)*8,flr(i/16)*8,w,h,x,y,w,h,fx,fy)
 end
 
 p8env.sspr=function(...)
 	return sspr(spritesheet,...)
 end
+
+--p8env.map=function()
+--	
+--end
