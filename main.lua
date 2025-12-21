@@ -1,16 +1,9 @@
---[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-20 23:22:33",prog="bbs://strawberry_src.p64",revision=502,xstickers={}]]
-local root="/appdata/p8_emulator/"
-fs={
-	cartdata="cartdata/"
-}
-mkdir(root)
-for k,v in pairs(fs) do
-	fs[k]=root..v
-	mkdir(fs[k])
-end
-
+--[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-21 13:37:33",prog="bbs://strawberry_src.p64",revision=554,xstickers={}]]
+include "fs.lua"
+include "wrangle.lua"
 include "env.lua"
 include "core.lua"
+include "helper.lua"
 
 
 p8=nil
@@ -19,7 +12,12 @@ frame_counter=0
 
 function _init()
 	cmd={}
-	window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,cursor=0,pauseable=true,pmenu={}}
+	if (settings.fullscreen) then
+		window{cursor=0,pauseable=true}
+	else
+		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,cursor=0,pauseable=true}
+	end
+	wrangle()
 	menuitem{id=1,label="Return to CMD",shortcut="Q",action=function() p8=nil end}
 	fetch("/system/fonts/p8.font"):poke(0x4000)
 	poke4(0x5000+48*4, --set pal 48-63 to the p8 "secret colors"
@@ -32,7 +30,12 @@ function _init()
 	--going based on 1/2 of ptron since thats 60fps 
 	poke(0x5f5e, 15)
 	poke(0x5f5d, 4)
+	
+	loadCartridge("p8_roms/welcome.p8")
 end
+
+p8frame=userdata("u8",128,128)
+
 function _update()
 	local factor=2
 	frame_counter+=1
@@ -40,8 +43,20 @@ function _update()
 		cls()
 		spr(1,1,1)
 	else
+		set_draw_target(p8frame)
 		p8._execute()
+		set_draw_target()
 		updateCartdata()
+		if (settings.fullscreen) then
+			--480/2=240, half of screen width
+			--270/2=135, half of screen height
+			--240-(256/2),135-(7/2), centered based on a double scale p8 frame
+			--position = 112,7
+			cls()
+			sspr(p8frame,0,0,128,128,112,7,256,256)
+		else
+			p8frame:blit()
+		end
 	end
 --	notify(stat(1)*100)
 end
@@ -56,16 +71,7 @@ on_event("drop_items",function(msg)
 	end
 
 	if(path:ext()=="p8")then
-		p8=load_p8(path)
-		if(p8)then
---			pmenu:init()
-			p8path=path
-			p8.name=sub(p8path,p8path:find("[^/\\]+$"))
-			notify("cart loaded: "..path)
-		else
-			add(cmd,"\feerror loading cart\f6")
-		end
-		if(p8)window{title=p8.name}
+		loadCartridge(path)
 	else
 		notify("invalid or incompatible file format (must be .p8)")
 	end

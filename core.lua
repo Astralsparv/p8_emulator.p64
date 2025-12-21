@@ -1,9 +1,16 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-20 23:11:23",prog="bbs://strawberry_src.p64",revision=89,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 12:50:06",prog="bbs://strawberry_src.p64",revision=101,xstickers={}]]
 -- core.lua
 cdata={}
-function load_p8(p8path)
-	local file=fetch(p8path)
-	if(not file)notify("could not load: "..p8path) return nil
+function load_p8(path)
+	if (not fstat(path)) then
+		notify(path.." doesn't exist :C")
+		return nil
+	end
+	
+	local file=fetch(path)
+	if (not file) then
+		notify("could not fetch: "..path.." - try clearing metadata") return nil
+	end
 	
 	--extract sections
 	local code=extract_section(file,"__lua__")or file
@@ -29,7 +36,7 @@ function load_p8(p8path)
 	env.t=env.time
 	
 	--compile and run code
-	local fn,err=load(code,p8path,"t",env)
+	local fn,err=load(code,path,"t",env)
 	if(not fn)error("compile error: "..err)
 	fn()
 	
@@ -48,6 +55,7 @@ function load_p8(p8path)
 	if(env._init)env._init()
 	srand(flr(rnd(0x7fff)))
 --	pmenu:refresh()
+	p8path=path
 	return env
 end
 
@@ -58,30 +66,4 @@ function extract_section(filestr,header)
 	local i0=a1+1
 	local i1=b0 and (b0-1)or #filestr
 	return filestr:sub(i0,i1)
-end
-
-function cdata:load(id)
-	local tbl={}
-	if(not fstat("/appdata/p8runner/cdata.pod"))store("/appdata/p8runner/cdata.pod",{})
-	if(not cdata.database)then
-		db=fetch("/appdata/p8runner/cdata.pod")
-		if(db)then
-			cdata.database=db
-		else
-			cdata.database={}
-		end
-	end
-	if(not cdata.database[id])then
-		for i=0,63 do add(tbl,0)end
-		cdata.database[id]=tbl
-	end
-	return cdata.database[id]
-end
-
-function cdata:save()
-	if(type(cdata.database)=="table")then
-		store("/appdata/p8runner/cdata.pod",cdata.database)
-	else
-		notify("[CDATA]: no database to save")
-	end
 end

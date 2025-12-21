@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-12-20 22:37:24",modified="2025-12-20 23:03:26",revision=32]]
+--[[pod_format="raw",created="2025-12-20 22:37:24",modified="2025-12-21 13:35:52",revision=43]]
 local cartdata
 local cartdataID=""
 local cartdataPath=fs.cartdata
@@ -18,13 +18,13 @@ p8env.cartdata=function(id)
 			cartdataDirty=true
 		end
 	else
-		assert("cartdata() can only be called once")
+		error("cartdata() can only be called once")
 	end
 end
 
 p8env.dget=function(k)
 	if (cartdataID=="") then
-		assert("dget called before cartdata()")
+		error("dget called before cartdata()")
 	else
 		return cartdata[k]
 	end
@@ -32,7 +32,7 @@ end
 
 p8env.dset=function(k,v)
 	if (cartdataID=="") then
-		assert("dset called before cartdata()")
+		error("dset called before cartdata()")
 	else
 		if (cartdata[k]!=v) then --only write when needed
 			cartdata[k]=v
