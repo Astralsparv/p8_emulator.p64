@@ -1,7 +1,7 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 21:33:07",prog="bbs://strawberry_src.p64",revision=549,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 23:10:22",prog="bbs://strawberry_src.p64",revision=630,xstickers={}]]
 include "core/env.lua"
-cdata={}
 
+local frame_counter=0
 spritesheet={}
 
 local function split(str, sep)
@@ -74,7 +74,6 @@ local function ripMap(file)
 	--1 pixel = 4 bits (0-15), so half a byte
 	--spritesheet:get(x,y) == gets two pixels because get returns 1 byte
 	
-	local hit={}
 	for y=32,63 do
 		local sy=64+(y-32)*2
 		for x=0,127 do
@@ -86,14 +85,56 @@ local function ripMap(file)
 			local low=spritesheet:get(px, py)
 			local high=spritesheet:get(px+1, py)
 			local tile=low|(high << 4)
-			hit[sy]=true
 
 			ud:set(x,y,tile)
 		end
 	end
 	
-	printh(pod(hit))
 	return ud
+end
+
+--todo: i hate you, i hope you get turned into paper and ripped
+local function ripSFX(file)
+	local sfx=extract_section(file,"__sfx__")
+	
+	--[[
+p8 storage
+The sound effects section begins with the delimiter __sfx__.
+
+Sound data is stored in the .p8 file as 64 lines of 168 hexadecimal digits
+(84 bytes, most significant nybble first), one line per sound effect (0-63).
+
+The byte values (hex digit pairs, MSB) are as follows:
+
+byte 0: The editor mode and filter switches. See Here for more info.
+byte 1: The note duration, in multiples of 1/128 second.
+byte 2: Loop range start, as a note number (0-63).
+byte 3: Loop range end, as a note number (0-63).
+bytes 4-84: 32 notes
+Each note is represented by 20 bits = 5 nybbles = 5 hex digits. (Two notes use five bytes.) The nybbles are:
+
+nybble 0-1: pitch (0-63): c-0 to d#-5, chromatic scale
+nybble 2: waveform (0-F): 0 sine, 1 triangle, 2 sawtooth, 3 long square, 4 short square, 5 ringing, 6 noise, 7 ringing sine; 8-F are the custom waveforms corresponding to sound effects 0 through 7 (PICO-8 0.1.11 "version 11" and later)
+nybble 3: volume (0-7)
+nybble 4: effect (0-7): 0 none, 1 slide, 2 vibrato, 3 drop, 4 fade_in, 5 fade_out, 6 arp fast, 7 arp slow; arpeggio commands loop over groups of four notes at speed 2 (fast) and 4 (slow)
+Note that this is very different from the in-memory layout for sound data.
+
+ptron memory
+	/system/apps/system/sfx.p64/data.lua
+		poke2(addr, 64) -- len
+		poke(addr+2,16) -- spd
+		poke(addr+3,0)  -- loop0
+		poke(addr+4,0)  -- loop1
+		poke(addr+5,0)  -- delay
+		poke(addr+6,0)  -- flags (0x1 mute)
+		poke(addr+7,0)  -- unused
+		
+		-- pitch, inst, vol: not set (0xff)
+		memset(addr+8, 0xff, 64*3)
+		
+		-- fx, fx_p: clear
+		memset(addr+8+64*3, 0x0, 64*2)
+	--]]
 end
 
 function load_p8(path)
@@ -104,7 +145,7 @@ function load_p8(path)
 	
 	local file=fetch(path,{raw_str=true})
 	if (not file) then
-		notify("could not fetch: "..path.." - try clearing metadata") return nil
+		notify("could not fetch: "..path) return nil
 	end
 	
 	--extract sections
@@ -119,37 +160,59 @@ function load_p8(path)
 	local env={}
 	for k,v in pairs(p8env) do env[k]=v end
 	env._menuitems={}
-	env._time=0
 	spritesheet=ripSpritesheet(file)
 	ripGFF(file)
 	memmap(ripMap(file,spritesheet),0x100000)
---	env.spr=function(i,x,y,w,h,fx,fy)w=(w or 1)*8 h=(h or 1)*8 local bx=(fx and 1) or 0 local by=(fy and 1) or 0 sspr(spritesheet,(i%16)*8,flr(i/16)*8,w,h,x+bx*w,y+by*h,w*(1-2*bx),h*(1-2*by))end
---	env.sspr=function(sx,sy,sw,sh,dx,dy,dw,dh,fw,fh)sspr(spritesheet,sx,sy,sw,sh,dx,dy,dw,dh,fw,fh)end
-	env.time=function()return env._time end
+	env.time=function()return time end
 	env.t=env.time
 	
 	--compile and run code
 	local fn,err=load(code,path,"t",env)
 	if(not fn)error("compile error: "..err)
-	set_draw_target(p8frame)
+	srand(flr(rnd(0x7fff)))
+	
+	time=0
+	p8frame=userdata("u8",128,128)
+	frame_counter=0
 	fn()
+	
+	set_draw_target(p8frame)
 	set_draw_target()
 	
 	--check `_update` and/or `_draw`
 	if(env._update60)then
-		env._draw=env._draw or function()end
-		env._execute=function()env._update60()env._draw()env._time+=0.0167 end
+		env._draw=env._draw or function() end
+		env._execute=function()
+			env._update60()
+			env._draw()
+			env._time+=0.0167
+		end
 	elseif(env._update)then
-		env._draw=env._draw or function()end
-		env._execute=function()if(frame_counter%2==0)then env._update()env._draw()env._time+=0.0333 end end
+		env._draw=env._draw or function() end
+		--is that how time is handled??
+		env._execute=function()
+			frame_counter+=1
+			if(frame_counter%2==0)then
+				env._update()
+				env._draw()
+				time+=0.0333 
+			end
+		end
 	elseif(env._draw)then
-		env._execute=function()if(frame_counter%2==0)then env._draw()env._time+=0.0333 end end
+		env._execute=function()
+			if(frame_counter%2==0)then
+				env._draw()
+				time+=0.0333
+			end
+		end
+	else
+		env._execute=function()
+			time+=0.0333 --still do this?
+		end
 	end
 	
-	--execute `_init` if exists
 	if(env._init)env._init()
-	srand(flr(rnd(0x7fff)))
---	pmenu:refresh()
+	
 	p8path=path
 	return env
 end

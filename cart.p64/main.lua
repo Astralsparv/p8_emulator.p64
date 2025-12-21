@@ -1,23 +1,22 @@
---[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-21 21:32:36",prog="bbs://strawberry_src.p64",revision=634,xstickers={}]]
+--[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-21 23:08:29",prog="bbs://strawberry_src.p64",revision=662,xstickers={}]]
 include "fs.lua"
 include "wrangle.lua"
 include "core/core.lua"
 include "helper.lua"
+fetch("/system/fonts/p8.font"):poke(0x4000)
 
 p8=nil
 p8path=""
-frame_counter=0
 
 function _init()
 	cmd={}
 	if (settings.fullscreen) then
 		window{cursor=0,pauseable=true}
 	else
-		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,cursor=1,pauseable=true}
+		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,pauseable=true,cursor=0}
 	end
 	wrangle()
-	menuitem{id=1,label="Return to CMD",shortcut="Q",action=function() p8=nil end}
-	fetch("/system/fonts/p8.font"):poke(0x4000)
+	
 --	poke4(0x5000+48*4, --set pal 48-63 to the p8 "secret colors"
 --		0x291814,0x111d35,0x422136,0x125359,
 --		0x742f29,0x49333b,0xa28879,0xf3ef7d,
@@ -29,38 +28,30 @@ function _init()
 	poke(0x5f5e, 15)
 	poke(0x5f5d, 4)
 	
-	loadCartridge("p8_roms/welcome.p8")
+	include "autoboot.lua"
 end
 
 p8frame=userdata("u8",128,128)
 
 function _update()
 	local factor=2
-	frame_counter+=1
-	if(not p8)then
-		cls()
---		spr(1,1,1)
-	else
+	if (p8) then --safety: there should always be a p8
 		set_draw_target(p8frame)
 		p8._execute()
 		set_draw_target()
 		updateCartdata()
 		if (settings.fullscreen) then
-			--480/2=240, half of screen width
-			--270/2=135, half of screen height
-			--240-(256/2),135-(7/2), centered based on a double scale p8 frame
-			--position = 112,7
 			cls()
 			sspr(p8frame,0,0,128,128,112,7,256,256)
 		else
 			p8frame:blit()
 --			cls()
 --			for i=0, 255 do
---				spr(i,(i%16)*8,flr(i/16)*8)
+--				local x,y=(i%16)*8,flr(i/16)*8
+--				spr(i,x,y)
 --			end
 		end
 	end
---	notify(stat(1)*100)
 end
 
 on_event("drop_items",function(msg)
@@ -68,11 +59,11 @@ on_event("drop_items",function(msg)
 	local path=msg.items[1].fullpath
 
 	if(not path)then
-		add(cmd,"\fesource error\n\f2| \f7invalid path")
+		notify("invalid path")
 		return
 	end
 
-	if(path:ext()=="p8")then
+	if(path:sub(-3)==".p8")then --don't use ext(), v1.0.p8:ext() is  ".0.p8"
 		loadCartridge(path)
 	else
 		notify("invalid or incompatible file format (must be .p8)")

@@ -1,14 +1,27 @@
 picotron cartridge // www.picotron.net
 version 2
 
+:: core/
+:: core/p8functs/
 :: gfx/
 :: map/
 :: p8_roms/
 :: p8_roms/tests/
-:: p8functs/
 :: sfx/
-:: env.lua
---[[pod_format="raw",created="2025-11-08 13:49:25",modified="2025-12-20 22:55:48",prog="bbs://strawberry_src.p64",revision=152,xstickers={}]]
+:: autoboot.lua
+--[[pod_format="raw",created="2025-12-21 22:21:25",modified="2025-12-21 22:35:36",revision=22]]
+local cart
+if (#env().fileview>0) then
+	cart=env().fileview[1].location
+end
+
+if (cart==nil or cart:sub(-3)!=".p8") then
+	cart="p8_roms/welcome.p8"
+end
+
+loadCartridge(cart)
+:: core/env.lua
+--[[pod_format="raw",created="2025-11-08 13:49:25",modified="2025-12-21 21:33:21",prog="bbs://strawberry_src.p64",revision=154,xstickers={}]]
 local function clone_env(env)
 	local new={}
 	for k, v in pairs(env) do
@@ -18,7 +31,7 @@ local function clone_env(env)
 end
 
 p8env=clone_env(_ENV)
-include "overwritefuncts.lua"
+include "core/p8functs/loader.lua"
 
 local _stat_switch={
 	[1]=stat, --cpu (total)
@@ -38,139 +51,7 @@ function p8env.stat(id)
 	local fn=_stat_switch[id]
 	if(fn)then return fn(id)else return 0 end
 end
-:: fs.lua
---[[pod_format="raw",created="2025-12-21 13:10:28",modified="2025-12-21 13:16:04",revision=9]]
-local root="/appdata/p8_emulator/"
-fs={
-	cartdata="cartdata/"
-}
-mkdir(root)
-for k,v in pairs(fs) do
-	fs[k]=root..v
-	mkdir(fs[k])
-end
-
---also handles updates to settings!
-local default_settings={
-	fullscreen=false
-}
-
-settings=fetch(root.."settings.pod") or {}
-local dirty=false
-for k,v in pairs(default_settings) do
-	if (settings[k]==nil) settings[k]=v dirty=true
-end
-
-if (dirty) store(root.."settings.pod",settings) dirty=nil
-:: helper.lua
---[[pod_format="raw",created="2025-12-21 12:56:57",modified="2025-12-21 12:57:03",revision=2]]
-function loadCartridge(path)
-	p8=load_p8(path)
-	if(p8)then
-	--			pmenu:init()
-		p8.name=sub(p8path,p8path:find("[^/\\]+$"))
-		notify("cart loaded: "..path)
-	else
-		add(cmd,"\feerror loading cart\f6")
-	end
-	if(p8)window{title=p8.name}
-end
-:: main.lua
---[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-21 21:21:58",prog="bbs://strawberry_src.p64",revision=631,xstickers={}]]
-include "fs.lua"
-include "wrangle.lua"
-include "env.lua"
-include "core.lua"
-include "helper.lua"
-
-
-p8=nil
-p8path=""
-frame_counter=0
-
-function _init()
-	cmd={}
-	if (settings.fullscreen) then
-		window{cursor=0,pauseable=true}
-	else
-		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,cursor=1,pauseable=true}
-	end
-	wrangle()
-	menuitem{id=1,label="Return to CMD",shortcut="Q",action=function() p8=nil end}
-	fetch("/system/fonts/p8.font"):poke(0x4000)
---	poke4(0x5000+48*4, --set pal 48-63 to the p8 "secret colors"
---		0x291814,0x111d35,0x422136,0x125359,
---		0x742f29,0x49333b,0xa28879,0xf3ef7d,
---		0xbe1250,0xff6c24,0xa8e72e,0x00b543,
---		0x065ab5,0x754665,0xff6e59,0xff9d81)--credits to @pancelor
-	--make it match p8, idk if this is right but it feels it - gotta check properly
-	--isn't seem 100%, letting go and repeating has too long of a delay
-	--going based on 1/2 of ptron since thats 60fps 
-	poke(0x5f5e, 15)
-	poke(0x5f5d, 4)
-	
-	loadCartridge("p8_roms/welcome.p8")
-end
-
-p8frame=userdata("u8",128,128)
-
-function _update()
-	local factor=2
-	frame_counter+=1
-	if(not p8)then
-		cls()
---		spr(1,1,1)
-	else
-		set_draw_target(p8frame)
-		p8._execute()
-		set_draw_target()
-		updateCartdata()
-		if (settings.fullscreen) then
-			--480/2=240, half of screen width
-			--270/2=135, half of screen height
-			--240-(256/2),135-(7/2), centered based on a double scale p8 frame
-			--position = 112,7
-			cls()
-			sspr(p8frame,0,0,128,128,112,7,256,256)
-		else
-			p8frame:blit()
---			cls()
---			for i=0, 255 do
---				spr(i,(i%16)*8,flr(i/16)*8)
---			end
-		end
-	end
---	notify(stat(1)*100)
-end
-
-on_event("drop_items",function(msg)
-	assert(#msg.items>0)
-	local path=msg.items[1].fullpath
-
-	if(not path)then
-		add(cmd,"\fesource error\n\f2| \f7invalid path")
-		return
-	end
-
-	if(path:ext()=="p8")then
-		loadCartridge(path)
-	else
-		notify("invalid or incompatible file format (must be .p8)")
-	end
-end)
-:: overwritefuncts.lua
---[[pod_format="raw",created="2025-12-20 22:28:20",modified="2025-12-21 15:10:04",revision=9]]
-include "p8functs/cartdata.lua"
-include "p8functs/sprites.lua"
-:: p8_roms/tests/readme.txt
---[[pod_format="raw",created="2025-12-20 23:13:13",modified="2025-12-21 12:23:02",revision=7]]
-cartdata.p8:
-	Cartdata ID: p8emulator
-	Tests dget(), dset() and cartdata()
-		Includes tests for the errors
-simple.p8
-	Test cart for drawing sprites & btn()
-:: p8functs/cartdata.lua
+:: core/p8functs/cartdata.lua
 --[[pod_format="raw",created="2025-12-20 22:37:24",modified="2025-12-21 19:09:49",revision=45]]
 local cartdata
 local cartdataID=""
@@ -220,8 +101,12 @@ function updateCartdata()
 		cartdataDirty=false
 	end
 end
-:: p8functs/sprites.lua
---[[pod_format="raw",created="2025-12-21 15:10:09",modified="2025-12-21 20:45:57",revision=88]]
+:: core/p8functs/loader.lua
+--[[pod_format="raw",created="2025-12-20 22:28:20",modified="2025-12-21 21:33:29",revision=10]]
+include "core/p8functs/cartdata.lua"
+include "core/p8functs/sprites.lua"
+:: core/p8functs/sprites.lua
+--[[pod_format="raw",created="2025-12-21 15:10:09",modified="2025-12-21 22:26:27",revision=89]]
 --uses built in spritebank
 --some fixes applied through stuff found in Soupster's code
 --spr(i,x,y,w,h,fx,fy)
@@ -239,10 +124,123 @@ end
 p8env.sspr=function(...)
 	return sspr(spritesheet,...)
 end
+:: fs.lua
+--[[pod_format="raw",created="2025-12-21 13:10:28",modified="2025-12-21 13:16:04",revision=9]]
+local root="/appdata/p8_emulator/"
+fs={
+	cartdata="cartdata/"
+}
+mkdir(root)
+for k,v in pairs(fs) do
+	fs[k]=root..v
+	mkdir(fs[k])
+end
 
---p8env.map=function()
---	
---end
+--also handles updates to settings!
+local default_settings={
+	fullscreen=false
+}
+
+settings=fetch(root.."settings.pod") or {}
+local dirty=false
+for k,v in pairs(default_settings) do
+	if (settings[k]==nil) settings[k]=v dirty=true
+end
+
+if (dirty) store(root.."settings.pod",settings) dirty=nil
+:: helper.lua
+--[[pod_format="raw",created="2025-12-21 12:56:57",modified="2025-12-21 12:57:03",revision=2]]
+function loadCartridge(path)
+	p8=load_p8(path)
+	if(p8)then
+	--			pmenu:init()
+		p8.name=sub(p8path,p8path:find("[^/\\]+$"))
+		notify("cart loaded: "..path)
+	else
+		add(cmd,"\feerror loading cart\f6")
+	end
+	if(p8)window{title=p8.name}
+end
+:: main.lua
+--[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-21 23:08:29",prog="bbs://strawberry_src.p64",revision=662,xstickers={}]]
+include "fs.lua"
+include "wrangle.lua"
+include "core/core.lua"
+include "helper.lua"
+fetch("/system/fonts/p8.font"):poke(0x4000)
+
+p8=nil
+p8path=""
+
+function _init()
+	cmd={}
+	if (settings.fullscreen) then
+		window{cursor=0,pauseable=true}
+	else
+		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,pauseable=true,cursor=0}
+	end
+	wrangle()
+	
+--	poke4(0x5000+48*4, --set pal 48-63 to the p8 "secret colors"
+--		0x291814,0x111d35,0x422136,0x125359,
+--		0x742f29,0x49333b,0xa28879,0xf3ef7d,
+--		0xbe1250,0xff6c24,0xa8e72e,0x00b543,
+--		0x065ab5,0x754665,0xff6e59,0xff9d81)--credits to @pancelor
+	--make it match p8, idk if this is right but it feels it - gotta check properly
+	--isn't seem 100%, letting go and repeating has too long of a delay
+	--going based on 1/2 of ptron since thats 60fps 
+	poke(0x5f5e, 15)
+	poke(0x5f5d, 4)
+	
+	include "autoboot.lua"
+end
+
+p8frame=userdata("u8",128,128)
+
+function _update()
+	local factor=2
+	if (p8) then --safety: there should always be a p8
+		set_draw_target(p8frame)
+		p8._execute()
+		set_draw_target()
+		updateCartdata()
+		if (settings.fullscreen) then
+			cls()
+			sspr(p8frame,0,0,128,128,112,7,256,256)
+		else
+			p8frame:blit()
+--			cls()
+--			for i=0, 255 do
+--				local x,y=(i%16)*8,flr(i/16)*8
+--				spr(i,x,y)
+--			end
+		end
+	end
+end
+
+on_event("drop_items",function(msg)
+	assert(#msg.items>0)
+	local path=msg.items[1].fullpath
+
+	if(not path)then
+		notify("invalid path")
+		return
+	end
+
+	if(path:sub(-3)==".p8")then --don't use ext(), v1.0.p8:ext() is  ".0.p8"
+		loadCartridge(path)
+	else
+		notify("invalid or incompatible file format (must be .p8)")
+	end
+end)
+:: p8_roms/tests/readme.txt
+--[[pod_format="raw",created="2025-12-20 23:13:13",modified="2025-12-21 12:23:02",revision=7]]
+cartdata.p8:
+	Cartdata ID: p8emulator
+	Tests dget(), dset() and cartdata()
+		Includes tests for the errors
+simple.p8
+	Test cart for drawing sprites & btn()
 :: wrangle.lua
 --[[pod_format="raw",created="2025-12-21 13:26:06",modified="2025-12-21 15:12:03",revision=16]]
 on_event("select_file", function(msg)
@@ -276,82 +274,113 @@ function wrangle()
 	}
 end
 :: .info.pod
---[[pod,author="wasdly, Astralsparv",created="2025-12-21 21:27:01",icon=userdata("u8",16,16,"00000000000000000000000000000000000000000000000000000000000000000000000000000001010000000000000000000000000001080801000000000000000000000001010808010100000000000000000001090907070f0f01000000000000000101090907070f0f01010000000000010a0a0707070707070e0e0100000000010a0a0707070707070e0e01000000000001010b0b07070d0d010100000000000000010b0b07070d0d0100000000000000000001010c0c01010000000000000000000000010c0c01000000000000000000000000000101000000000000000000000000000000000000000000000000000000000000000000000000000000"),modified="2025-12-21 21:31:12",notes="Pico-8 emulator for Picotron\n\n/appdata/p8_emulator/",runtime=24,title="P8 Runner",version="0.1.0b",workspaces={{location="main.lua",workspace_index=1},{location="fs.lua",workspace_index=1}}]]
-:: core.lua
+--[[pod,author="wasdly, Astralsparv",created="2025-12-21 21:27:01",icon=userdata("u8",16,16,"00000000000000000000000000000000000000000000000000000000000000000000000000000001010000000000000000000000000001080801000000000000000000000001010808010100000000000000000001090907070f0f01000000000000000101090907070f0f01010000000000010a0a0707070707070e0e0100000000010a0a0707070707070e0e01000000000001010b0b07070d0d010100000000000000010b0b07070d0d0100000000000000000001010c0c01010000000000000000000000010c0c01000000000000000000000000000101000000000000000000000000000000000000000000000000000000000000000000000000000000"),modified="2025-12-21 23:10:39",notes="Pico-8 emulator for Picotron\n\n/appdata/p8_emulator/",runtime=24,title="P8 Runner",version="0.1.0b",workspaces={{location="main.lua#4",workspace_index=1},{location="core/core.lua#221",workspace_index=1},{location="autoboot.lua#1",workspace_index=1},{location="core/p8functs/sprites.lua#17",workspace_index=1},{location="sfx/0.sfx",workspace_index=4}}]]
+:: core/.info.pod
+--[[pod,created="2025-12-21 21:31:29",modified="2025-12-21 23:10:39"]]
+:: core/core.lua
 b64$LS1bW3BvZF9mb3JtYXQ9InJhdyIsY3JlYXRlZD0iMjAyNS0xMS0xOSAxODozNDoxNCIsbW9k
-aWZpZWQ9IjIwMjUtMTItMjEgMjE6MTA6NDEiLHByb2c9ImJiczovL3N0cmF3YmVycnlfc3JjLnA2
-NCIscmV2aXNpb249NTQ2LHhzdGlja2Vycz17fV1dCi0tIGNvcmUubHVhCmNkYXRhPXt9CgpzcHJp
-dGVzaGVldD17fQoKbG9jYWwgZnVuY3Rpb24gc3BsaXQoc3RyLCBzZXApCglsb2NhbCB0PXt9Cglz
-ZXA9c2VwIG9yICIlcyIKCWxvY2FsIHBhdHRlcm4gPSAiKFteIi4uc2VwLi4iXSspIgoJZm9yIHBh
-cnQgaW4gc3RyOmdtYXRjaChwYXR0ZXJuKSBkbwoJCXRhYmxlLmluc2VydCh0LCBwYXJ0KQoJZW5k
-CglyZXR1cm4gdAplbmQKCmxvY2FsIGZ1bmN0aW9uIHJpcEdGRihmaWxlKSAtLXNwcml0ZSBmbGFn
-cwoJbG9jYWwgZ2ZmPWV4dHJhY3Rfc2VjdGlvbihmaWxlLCJfX2dmZl9fIikKCWlmIChnZmY9PW5p
-bCkgcmV0dXJuCglnZmY9c3BsaXQoZ2ZmLCJcbiIpCgkKCWZvciBzcD0wLCAyNTUgZG8KCQlsb2Nh
-bCB5PTEKCQlpZiAoc3A_PTEyOCkgeT0yCgkJbG9jYWwgaT0oc3AlMTI4KSoyKzEKCQlsb2NhbCBo
-ZXg9Z2ZmW3ldOnN1YihpLGkrMSkKCQlmc2V0KHNwLHRvbnVtYmVyKGhleCwxNikpCgllbmQKZW5k
-Cgpsb2NhbCBmdW5jdGlvbiByaXBTcHJpdGVzaGVldChmaWxlKQoJbG9jYWwgZ2Z4PWV4dHJhY3Rf
-c2VjdGlvbihmaWxlLCJfX2dmeF9fIikKCWlmIChub3QgZ2Z4KSByZXR1cm4gdXNlcmRhdGEoInU4
-IiwxMjgsMTI4KQoJZ2Z4PWdmeDpzcGxpdCgiXG4iLGZhbHNlKQoJCglzcHJpdGVzaGVldD11c2Vy
-ZGF0YSgidTgiLDEyOCwxMjgpCgkKCWZvciB5PTAsMTI3IGRvCgkJbG9jYWwgbGluZT1nZnhbeSsy
-XSBvciAiIgoJCWZvciB4PTAsMTI3IGRvCgkJCWxvY2FsIGM9bGluZTpzdWIoeCsxLCB4KzEpIG9y
-ICIwIgoJCQlzcHJpdGVzaGVldDpzZXQoeCwgeSwgdG9udW0oIjB4Ii4uYykpCgkJZW5kCgllbmQK
-CQoJZm9yIGk9MCwgMjU1IGRvCgkJbG9jYWwgeCx5PShpJTE2KSo4LGZscihpLzE2KSo4CgkJbG9j
-YWwgc3ByVUQ9dXNlcmRhdGEoInU4Iiw4LDgpCgkJc3ByaXRlc2hlZXQ6YmxpdChzcHJVRCx4LHks
-MCwwLDgsOCkKCQlzZXRfc3ByKGksc3ByVUQpCgllbmQKCXJldHVybiBzcHJpdGVzaGVldAplbmQK
-CmxvY2FsIGZ1bmN0aW9uIHJpcE1hcChmaWxlKQoJc3ByaXRlc2hlZXQ9c3ByaXRlc2hlZXQgb3Ig
-cmlwU3ByaXRlc2hlZXQoZmlsZSkKCWxvY2FsIG1hcD1leHRyYWN0X3NlY3Rpb24oZmlsZSwiX19t
-YXBfXyIpCglpZiAobm90IG1hcCkgcmV0dXJuIG5pbAoJbWFwPW1hcDpnc3ViKCJcbiIsIiIpCgls
-b2NhbCB1ZD11c2VyZGF0YSgiaTE2IiwxMjgsNjQpCgktLW1hcHMgPT0gaTE2CgkKCS0tbG9hZCB0
-b3AgaGFsZiBmcm9tIF9fbWFwX18KCWZvciB5PTAsIDMxIGRvCgkJZm9yIHg9MCwgMTI3IGRvCgkJ
-CWxvY2FsIGk9KHkqMTI4K3gpKjIrMQoJCQlsb2NhbCBoZXg9bWFwOnN1YihpLGkrMSkKCQkJbG9j
-YWwgdGlsZT10b251bWJlcihoZXgsMTYpIG9yIDAgLS1iYXNlIDE2CgkJCXVkOnNldCh4LHksdGls
-ZSkKCQllbmQKCWVuZAoJCgktLWxvYWQgYm90dG9tIGZyb20gX19nZnhfXwoJLS0xIHBpeGVsID0g
-NCBiaXRzICgwLTE1KSwgc28gaGFsZiBhIGJ5dGUKCS0tc3ByaXRlc2hlZXQ6Z2V0KHgseSkgPT0g
-Z2V0cyB0d28gcGl4ZWxzIGJlY2F1c2UgZ2V0IHJldHVybnMgMSBieXRlCgkKCWxvY2FsIGhpdD17
-fQoJZm9yIHk9MzIsNjMgZG8KCQlsb2NhbCBzeT02NCsoeS0zMikqMgoJCWZvciB4PTAsMTI3IGRv
-CgkJCS0tMSBieXRlID0gMSB0aWxlCgkJCWxvY2FsIG9mZnNldD1mbHIoeC82NCkKCQkJbG9jYWwg
-cHg9KHglNjQpKjIKCQkJbG9jYWwgcHk9c3krb2Zmc2V0CgkJCQoJCQlsb2NhbCBsb3c9c3ByaXRl
-c2hlZXQ6Z2V0KHB4LCBweSkKCQkJbG9jYWwgaGlnaD1zcHJpdGVzaGVldDpnZXQocHgrMSwgcHkp
-CgkJCWxvY2FsIHRpbGU9bG93fChoaWdoIDw8IDQpCgkJCWhpdFtzeV09dHJ1ZQoKCQkJdWQ6c2V0
-KHgseSx0aWxlKQoJCWVuZAoJZW5kCgkKCXByaW50aChwb2QoaGl0KSkKCXJldHVybiB1ZAplbmQK
-CmZ1bmN0aW9uIGxvYWRfcDgocGF0aCkKCWlmIChub3QgZnN0YXQocGF0aCkpIHRoZW4KCQlub3Rp
-ZnkocGF0aC4uIiBkb2Vzbid0IGV4aXN0IDpDIikKCQlyZXR1cm4gbmlsCgllbmQKCQoJbG9jYWwg
-ZmlsZT1mZXRjaChwYXRoLHtyYXdfc3RyPXRydWV9KQoJaWYgKG5vdCBmaWxlKSB0aGVuCgkJbm90
-aWZ5KCJjb3VsZCBub3QgZmV0Y2g6ICIuLnBhdGguLiIgLSB0cnkgY2xlYXJpbmcgbWV0YWRhdGEi
-KSByZXR1cm4gbmlsCgllbmQKCQoJLS1leHRyYWN0IHNlY3Rpb25zCglsb2NhbCBjb2RlPWV4dHJh
-Y3Rfc2VjdGlvbihmaWxlLCJfX2x1YV9fIilvciBmaWxlCgljb2RlPWNvZGU6Z3N1YigiiyIsIjAi
-KTpnc3ViKCKRIiwiMSIpOmdzdWIoIpQiLCIyIik6Z3N1YigigyIsIjMiKQoJaWYgY29kZTpmaW5k
-KCIlZlslYV1nb3RvJWZbJUFdIikgdGhlbgoJCW5vdGlmeSgiJ2dvdG8nIGlzIG5vdCBzdXBwb3J0
-ZWQgaW4gUDggUnVubmVyIikKCQlyZXR1cm4gbmlsCgllbmQKCQoJLS1jcmVhdGUgZW52Cglsb2Nh
-bCBlbnY9e30KCWZvciBrLHYgaW4gcGFpcnMocDhlbnYpIGRvIGVudltrXT12IGVuZAoJZW52Ll9t
-ZW51aXRlbXM9e30KCWVudi5fdGltZT0wCglzcHJpdGVzaGVldD1yaXBTcHJpdGVzaGVldChmaWxl
-KQoJcmlwR0ZGKGZpbGUpCgltZW1tYXAocmlwTWFwKGZpbGUsc3ByaXRlc2hlZXQpLDB4MTAwMDAw
-KQotLQllbnYuc3ByPWZ1bmN0aW9uKGkseCx5LHcsaCxmeCxmeSl3PSh3IG9yIDEpKjggaD0oaCBv
-ciAxKSo4IGxvY2FsIGJ4PShmeCBhbmQgMSkgb3IgMCBsb2NhbCBieT0oZnkgYW5kIDEpIG9yIDAg
-c3NwcihzcHJpdGVzaGVldCwoaSUxNikqOCxmbHIoaS8xNikqOCx3LGgseCtieCp3LHkrYnkqaCx3
-KigxLTIqYngpLGgqKDEtMipieSkpZW5kCi0tCWVudi5zc3ByPWZ1bmN0aW9uKHN4LHN5LHN3LHNo
-LGR4LGR5LGR3LGRoLGZ3LGZoKXNzcHIoc3ByaXRlc2hlZXQsc3gsc3ksc3csc2gsZHgsZHksZHcs
-ZGgsZncsZmgpZW5kCgllbnYudGltZT1mdW5jdGlvbigpcmV0dXJuIGVudi5fdGltZSBlbmQKCWVu
-di50PWVudi50aW1lCgkKCS0tY29tcGlsZSBhbmQgcnVuIGNvZGUKCWxvY2FsIGZuLGVycj1sb2Fk
-KGNvZGUscGF0aCwidCIsZW52KQoJaWYobm90IGZuKWVycm9yKCJjb21waWxlIGVycm9yOiAiLi5l
-cnIpCglzZXRfZHJhd190YXJnZXQocDhmcmFtZSkKCWZuKCkKCXNldF9kcmF3X3RhcmdldCgpCgkK
-CS0tY2hlY2sgYF91cGRhdGVgIGFuZC9vciBgX2RyYXdgCglpZihlbnYuX3VwZGF0ZTYwKXRoZW4K
-CQllbnYuX2RyYXc9ZW52Ll9kcmF3IG9yIGZ1bmN0aW9uKCllbmQKCQllbnYuX2V4ZWN1dGU9ZnVu
-Y3Rpb24oKWVudi5fdXBkYXRlNjAoKWVudi5fZHJhdygpZW52Ll90aW1lKz0wLjAxNjcgZW5kCgll
-bHNlaWYoZW52Ll91cGRhdGUpdGhlbgoJCWVudi5fZHJhdz1lbnYuX2RyYXcgb3IgZnVuY3Rpb24o
-KWVuZAoJCWVudi5fZXhlY3V0ZT1mdW5jdGlvbigpaWYoZnJhbWVfY291bnRlciUyPT0wKXRoZW4g
-ZW52Ll91cGRhdGUoKWVudi5fZHJhdygpZW52Ll90aW1lKz0wLjAzMzMgZW5kIGVuZAoJZWxzZWlm
-KGVudi5fZHJhdyl0aGVuCgkJZW52Ll9leGVjdXRlPWZ1bmN0aW9uKClpZihmcmFtZV9jb3VudGVy
-JTI9PTApdGhlbiBlbnYuX2RyYXcoKWVudi5fdGltZSs9MC4wMzMzIGVuZCBlbmQKCWVuZAoJCgkt
-LWV4ZWN1dGUgYF9pbml0YCBpZiBleGlzdHMKCWlmKGVudi5faW5pdCllbnYuX2luaXQoKQoJc3Jh
-bmQoZmxyKHJuZCgweDdmZmYpKSkKLS0JcG1lbnU6cmVmcmVzaCgpCglwOHBhdGg9cGF0aAoJcmV0
-dXJuIGVudgplbmQKCmZ1bmN0aW9uIGV4dHJhY3Rfc2VjdGlvbihmaWxlc3RyLGhlYWRlcikKCWxv
-Y2FsIGEwLGExPWZpbGVzdHI6ZmluZChoZWFkZXIpCglpZiBub3QgYTAgdGhlbiByZXR1cm4gbmls
-IGVuZAoJbG9jYWwgYjA9ZmlsZXN0cjpmaW5kKCJcbl9fWyV3X10rX19cbiIsYTErMSkKCWxvY2Fs
-IGkwPWExKzEKCWxvY2FsIGkxPWIwIGFuZCAoYjAtMSlvciAjZmlsZXN0cgoJcmV0dXJuIGZpbGVz
-dHI6c3ViKGkwLGkxKQplbmQ=
+aWZpZWQ9IjIwMjUtMTItMjEgMjM6MTA6MjIiLHByb2c9ImJiczovL3N0cmF3YmVycnlfc3JjLnA2
+NCIscmV2aXNpb249NjMwLHhzdGlja2Vycz17fV1dCmluY2x1ZGUgImNvcmUvZW52Lmx1YSIKCmxv
+Y2FsIGZyYW1lX2NvdW50ZXI9MApzcHJpdGVzaGVldD17fQoKbG9jYWwgZnVuY3Rpb24gc3BsaXQo
+c3RyLCBzZXApCglsb2NhbCB0PXt9CglzZXA9c2VwIG9yICIlcyIKCWxvY2FsIHBhdHRlcm4gPSAi
+KFteIi4uc2VwLi4iXSspIgoJZm9yIHBhcnQgaW4gc3RyOmdtYXRjaChwYXR0ZXJuKSBkbwoJCXRh
+YmxlLmluc2VydCh0LCBwYXJ0KQoJZW5kCglyZXR1cm4gdAplbmQKCmxvY2FsIGZ1bmN0aW9uIHJp
+cEdGRihmaWxlKSAtLXNwcml0ZSBmbGFncwoJbG9jYWwgZ2ZmPWV4dHJhY3Rfc2VjdGlvbihmaWxl
+LCJfX2dmZl9fIikKCWlmIChnZmY9PW5pbCkgcmV0dXJuCglnZmY9c3BsaXQoZ2ZmLCJcbiIpCgkK
+CWZvciBzcD0wLCAyNTUgZG8KCQlsb2NhbCB5PTEKCQlpZiAoc3A_PTEyOCkgeT0yCgkJbG9jYWwg
+aT0oc3AlMTI4KSoyKzEKCQlsb2NhbCBoZXg9Z2ZmW3ldOnN1YihpLGkrMSkKCQlmc2V0KHNwLHRv
+bnVtYmVyKGhleCwxNikpCgllbmQKZW5kCgpsb2NhbCBmdW5jdGlvbiByaXBTcHJpdGVzaGVldChm
+aWxlKQoJbG9jYWwgZ2Z4PWV4dHJhY3Rfc2VjdGlvbihmaWxlLCJfX2dmeF9fIikKCWlmIChub3Qg
+Z2Z4KSByZXR1cm4gdXNlcmRhdGEoInU4IiwxMjgsMTI4KQoJZ2Z4PWdmeDpzcGxpdCgiXG4iLGZh
+bHNlKQoJCglzcHJpdGVzaGVldD11c2VyZGF0YSgidTgiLDEyOCwxMjgpCgkKCWZvciB5PTAsMTI3
+IGRvCgkJbG9jYWwgbGluZT1nZnhbeSsyXSBvciAiIgoJCWZvciB4PTAsMTI3IGRvCgkJCWxvY2Fs
+IGM9bGluZTpzdWIoeCsxLCB4KzEpIG9yICIwIgoJCQlzcHJpdGVzaGVldDpzZXQoeCwgeSwgdG9u
+dW0oIjB4Ii4uYykpCgkJZW5kCgllbmQKCQoJZm9yIGk9MCwgMjU1IGRvCgkJbG9jYWwgeCx5PShp
+JTE2KSo4LGZscihpLzE2KSo4CgkJbG9jYWwgc3ByVUQ9dXNlcmRhdGEoInU4Iiw4LDgpCgkJc3By
+aXRlc2hlZXQ6YmxpdChzcHJVRCx4LHksMCwwLDgsOCkKCQlzZXRfc3ByKGksc3ByVUQpCgllbmQK
+CXJldHVybiBzcHJpdGVzaGVldAplbmQKCmxvY2FsIGZ1bmN0aW9uIHJpcE1hcChmaWxlKQoJc3By
+aXRlc2hlZXQ9c3ByaXRlc2hlZXQgb3IgcmlwU3ByaXRlc2hlZXQoZmlsZSkKCWxvY2FsIG1hcD1l
+eHRyYWN0X3NlY3Rpb24oZmlsZSwiX19tYXBfXyIpCglpZiAobm90IG1hcCkgcmV0dXJuIG5pbAoJ
+bWFwPW1hcDpnc3ViKCJcbiIsIiIpCglsb2NhbCB1ZD11c2VyZGF0YSgiaTE2IiwxMjgsNjQpCgkt
+LW1hcHMgPT0gaTE2CgkKCS0tbG9hZCB0b3AgaGFsZiBmcm9tIF9fbWFwX18KCWZvciB5PTAsIDMx
+IGRvCgkJZm9yIHg9MCwgMTI3IGRvCgkJCWxvY2FsIGk9KHkqMTI4K3gpKjIrMQoJCQlsb2NhbCBo
+ZXg9bWFwOnN1YihpLGkrMSkKCQkJbG9jYWwgdGlsZT10b251bWJlcihoZXgsMTYpIG9yIDAgLS1i
+YXNlIDE2CgkJCXVkOnNldCh4LHksdGlsZSkKCQllbmQKCWVuZAoJCgktLWxvYWQgYm90dG9tIGZy
+b20gX19nZnhfXwoJLS0xIHBpeGVsID0gNCBiaXRzICgwLTE1KSwgc28gaGFsZiBhIGJ5dGUKCS0t
+c3ByaXRlc2hlZXQ6Z2V0KHgseSkgPT0gZ2V0cyB0d28gcGl4ZWxzIGJlY2F1c2UgZ2V0IHJldHVy
+bnMgMSBieXRlCgkKCWZvciB5PTMyLDYzIGRvCgkJbG9jYWwgc3k9NjQrKHktMzIpKjIKCQlmb3Ig
+eD0wLDEyNyBkbwoJCQktLTEgYnl0ZSA9IDEgdGlsZQoJCQlsb2NhbCBvZmZzZXQ9ZmxyKHgvNjQp
+CgkJCWxvY2FsIHB4PSh4JTY0KSoyCgkJCWxvY2FsIHB5PXN5K29mZnNldAoJCQkKCQkJbG9jYWwg
+bG93PXNwcml0ZXNoZWV0OmdldChweCwgcHkpCgkJCWxvY2FsIGhpZ2g9c3ByaXRlc2hlZXQ6Z2V0
+KHB4KzEsIHB5KQoJCQlsb2NhbCB0aWxlPWxvd3woaGlnaCA8PCA0KQoKCQkJdWQ6c2V0KHgseSx0
+aWxlKQoJCWVuZAoJZW5kCgkKCXJldHVybiB1ZAplbmQKCi0tdG9kbzogaSBoYXRlIHlvdSwgaSBo
+b3BlIHlvdSBnZXQgdHVybmVkIGludG8gcGFwZXIgYW5kIHJpcHBlZApsb2NhbCBmdW5jdGlvbiBy
+aXBTRlgoZmlsZSkKCWxvY2FsIHNmeD1leHRyYWN0X3NlY3Rpb24oZmlsZSwiX19zZnhfXyIpCgkK
+CS0tW1sKcDggc3RvcmFnZQpUaGUgc291bmQgZWZmZWN0cyBzZWN0aW9uIGJlZ2lucyB3aXRoIHRo
+ZSBkZWxpbWl0ZXIgX19zZnhfXy4KClNvdW5kIGRhdGEgaXMgc3RvcmVkIGluIHRoZSAucDggZmls
+ZSBhcyA2NCBsaW5lcyBvZiAxNjggaGV4YWRlY2ltYWwgZGlnaXRzCig4NCBieXRlcywgbW9zdCBz
+aWduaWZpY2FudCBueWJibGUgZmlyc3QpLCBvbmUgbGluZSBwZXIgc291bmQgZWZmZWN0ICgwLTYz
+KS4KClRoZSBieXRlIHZhbHVlcyAoaGV4IGRpZ2l0IHBhaXJzLCBNU0IpIGFyZSBhcyBmb2xsb3dz
+OgoKYnl0ZSAwOiBUaGUgZWRpdG9yIG1vZGUgYW5kIGZpbHRlciBzd2l0Y2hlcy4gU2VlIEhlcmUg
+Zm9yIG1vcmUgaW5mby4KYnl0ZSAxOiBUaGUgbm90ZSBkdXJhdGlvbiwgaW4gbXVsdGlwbGVzIG9m
+IDEvMTI4IHNlY29uZC4KYnl0ZSAyOiBMb29wIHJhbmdlIHN0YXJ0LCBhcyBhIG5vdGUgbnVtYmVy
+ICgwLTYzKS4KYnl0ZSAzOiBMb29wIHJhbmdlIGVuZCwgYXMgYSBub3RlIG51bWJlciAoMC02Myku
+CmJ5dGVzIDQtODQ6IDMyIG5vdGVzCkVhY2ggbm90ZSBpcyByZXByZXNlbnRlZCBieSAyMCBiaXRz
+ID0gNSBueWJibGVzID0gNSBoZXggZGlnaXRzLiAoVHdvIG5vdGVzIHVzZSBmaXZlIGJ5dGVzLikg
+VGhlIG55YmJsZXMgYXJlOgoKbnliYmxlIDAtMTogcGl0Y2ggKDAtNjMpOiBjLTAgdG8gZCMtNSwg
+Y2hyb21hdGljIHNjYWxlCm55YmJsZSAyOiB3YXZlZm9ybSAoMC1GKTogMCBzaW5lLCAxIHRyaWFu
+Z2xlLCAyIHNhd3Rvb3RoLCAzIGxvbmcgc3F1YXJlLCA0IHNob3J0IHNxdWFyZSwgNSByaW5naW5n
+LCA2IG5vaXNlLCA3IHJpbmdpbmcgc2luZTsgOC1GIGFyZSB0aGUgY3VzdG9tIHdhdmVmb3JtcyBj
+b3JyZXNwb25kaW5nIHRvIHNvdW5kIGVmZmVjdHMgMCB0aHJvdWdoIDcgKFBJQ08tOCAwLjEuMTEg
+InZlcnNpb24gMTEiIGFuZCBsYXRlcikKbnliYmxlIDM6IHZvbHVtZSAoMC03KQpueWJibGUgNDog
+ZWZmZWN0ICgwLTcpOiAwIG5vbmUsIDEgc2xpZGUsIDIgdmlicmF0bywgMyBkcm9wLCA0IGZhZGVf
+aW4sIDUgZmFkZV9vdXQsIDYgYXJwIGZhc3QsIDcgYXJwIHNsb3c7IGFycGVnZ2lvIGNvbW1hbmRz
+IGxvb3Agb3ZlciBncm91cHMgb2YgZm91ciBub3RlcyBhdCBzcGVlZCAyIChmYXN0KSBhbmQgNCAo
+c2xvdykKTm90ZSB0aGF0IHRoaXMgaXMgdmVyeSBkaWZmZXJlbnQgZnJvbSB0aGUgaW4tbWVtb3J5
+IGxheW91dCBmb3Igc291bmQgZGF0YS4KCnB0cm9uIG1lbW9yeQoJL3N5c3RlbS9hcHBzL3N5c3Rl
+bS9zZngucDY0L2RhdGEubHVhCgkJcG9rZTIoYWRkciwgNjQpIC0tIGxlbgoJCXBva2UoYWRkcisy
+LDE2KSAtLSBzcGQKCQlwb2tlKGFkZHIrMywwKSAgLS0gbG9vcDAKCQlwb2tlKGFkZHIrNCwwKSAg
+LS0gbG9vcDEKCQlwb2tlKGFkZHIrNSwwKSAgLS0gZGVsYXkKCQlwb2tlKGFkZHIrNiwwKSAgLS0g
+ZmxhZ3MgKDB4MSBtdXRlKQoJCXBva2UoYWRkcis3LDApICAtLSB1bnVzZWQKCQkKCQktLSBwaXRj
+aCwgaW5zdCwgdm9sOiBub3Qgc2V0ICgweGZmKQoJCW1lbXNldChhZGRyKzgsIDB4ZmYsIDY0KjMp
+CgkJCgkJLS0gZngsIGZ4X3A6IGNsZWFyCgkJbWVtc2V0KGFkZHIrOCs2NCozLCAweDAsIDY0KjIp
+CgktLV1dCmVuZAoKZnVuY3Rpb24gbG9hZF9wOChwYXRoKQoJaWYgKG5vdCBmc3RhdChwYXRoKSkg
+dGhlbgoJCW5vdGlmeShwYXRoLi4iIGRvZXNuJ3QgZXhpc3QgOkMiKQoJCXJldHVybiBuaWwKCWVu
+ZAoJCglsb2NhbCBmaWxlPWZldGNoKHBhdGgse3Jhd19zdHI9dHJ1ZX0pCglpZiAobm90IGZpbGUp
+IHRoZW4KCQlub3RpZnkoImNvdWxkIG5vdCBmZXRjaDogIi4ucGF0aCkgcmV0dXJuIG5pbAoJZW5k
+CgkKCS0tZXh0cmFjdCBzZWN0aW9ucwoJbG9jYWwgY29kZT1leHRyYWN0X3NlY3Rpb24oZmlsZSwi
+X19sdWFfXyIpb3IgZmlsZQoJY29kZT1jb2RlOmdzdWIoIosiLCIwIik6Z3N1YigikSIsIjEiKTpn
+c3ViKCKUIiwiMiIpOmdzdWIoIoMiLCIzIikKCWlmIGNvZGU6ZmluZCgiJWZbJWFdZ290byVmWyVB
+XSIpIHRoZW4KCQlub3RpZnkoIidnb3RvJyBpcyBub3Qgc3VwcG9ydGVkIGluIFA4IFJ1bm5lciIp
+CgkJcmV0dXJuIG5pbAoJZW5kCgkKCS0tY3JlYXRlIGVudgoJbG9jYWwgZW52PXt9Cglmb3Igayx2
+IGluIHBhaXJzKHA4ZW52KSBkbyBlbnZba109diBlbmQKCWVudi5fbWVudWl0ZW1zPXt9CglzcHJp
+dGVzaGVldD1yaXBTcHJpdGVzaGVldChmaWxlKQoJcmlwR0ZGKGZpbGUpCgltZW1tYXAocmlwTWFw
+KGZpbGUsc3ByaXRlc2hlZXQpLDB4MTAwMDAwKQoJZW52LnRpbWU9ZnVuY3Rpb24oKXJldHVybiB0
+aW1lIGVuZAoJZW52LnQ9ZW52LnRpbWUKCQoJLS1jb21waWxlIGFuZCBydW4gY29kZQoJbG9jYWwg
+Zm4sZXJyPWxvYWQoY29kZSxwYXRoLCJ0IixlbnYpCglpZihub3QgZm4pZXJyb3IoImNvbXBpbGUg
+ZXJyb3I6ICIuLmVycikKCXNyYW5kKGZscihybmQoMHg3ZmZmKSkpCgkKCXRpbWU9MAoJcDhmcmFt
+ZT11c2VyZGF0YSgidTgiLDEyOCwxMjgpCglmcmFtZV9jb3VudGVyPTAKCWZuKCkKCQoJc2V0X2Ry
+YXdfdGFyZ2V0KHA4ZnJhbWUpCglzZXRfZHJhd190YXJnZXQoKQoJCgktLWNoZWNrIGBfdXBkYXRl
+YCBhbmQvb3IgYF9kcmF3YAoJaWYoZW52Ll91cGRhdGU2MCl0aGVuCgkJZW52Ll9kcmF3PWVudi5f
+ZHJhdyBvciBmdW5jdGlvbigpIGVuZAoJCWVudi5fZXhlY3V0ZT1mdW5jdGlvbigpCgkJCWVudi5f
+dXBkYXRlNjAoKQoJCQllbnYuX2RyYXcoKQoJCQllbnYuX3RpbWUrPTAuMDE2NwoJCWVuZAoJZWxz
+ZWlmKGVudi5fdXBkYXRlKXRoZW4KCQllbnYuX2RyYXc9ZW52Ll9kcmF3IG9yIGZ1bmN0aW9uKCkg
+ZW5kCgkJLS1pcyB0aGF0IGhvdyB0aW1lIGlzIGhhbmRsZWQ-PwoJCWVudi5fZXhlY3V0ZT1mdW5j
+dGlvbigpCgkJCWZyYW1lX2NvdW50ZXIrPTEKCQkJaWYoZnJhbWVfY291bnRlciUyPT0wKXRoZW4K
+CQkJCWVudi5fdXBkYXRlKCkKCQkJCWVudi5fZHJhdygpCgkJCQl0aW1lKz0wLjAzMzMgCgkJCWVu
+ZAoJCWVuZAoJZWxzZWlmKGVudi5fZHJhdyl0aGVuCgkJZW52Ll9leGVjdXRlPWZ1bmN0aW9uKCkK
+CQkJaWYoZnJhbWVfY291bnRlciUyPT0wKXRoZW4KCQkJCWVudi5fZHJhdygpCgkJCQl0aW1lKz0w
+LjAzMzMKCQkJZW5kCgkJZW5kCgllbHNlCgkJZW52Ll9leGVjdXRlPWZ1bmN0aW9uKCkKCQkJdGlt
+ZSs9MC4wMzMzIC0tc3RpbGwgZG8gdGhpcz8KCQllbmQKCWVuZAoJCglpZihlbnYuX2luaXQpZW52
+Ll9pbml0KCkKCQoJcDhwYXRoPXBhdGgKCXJldHVybiBlbnYKZW5kCgpmdW5jdGlvbiBleHRyYWN0
+X3NlY3Rpb24oZmlsZXN0cixoZWFkZXIpCglsb2NhbCBhMCxhMT1maWxlc3RyOmZpbmQoaGVhZGVy
+KQoJaWYgbm90IGEwIHRoZW4gcmV0dXJuIG5pbCBlbmQKCWxvY2FsIGIwPWZpbGVzdHI6ZmluZCgi
+XG5fX1sld19dK19fXG4iLGExKzEpCglsb2NhbCBpMD1hMSsxCglsb2NhbCBpMT1iMCBhbmQgKGIw
+LTEpb3IgI2ZpbGVzdHIKCXJldHVybiBmaWxlc3RyOnN1YihpMCxpMSkKZW5k
+:: core/p8functs/.info.pod
+--[[pod,created="2025-12-20 22:30:21",modified="2025-12-21 23:10:39"]]
 :: gfx/.info.pod
---[[pod,created="2025-11-03 11:55:22",modified="2025-12-21 21:31:12"]]
+--[[pod,created="2025-11-03 11:55:22",modified="2025-12-21 23:10:39"]]
 :: gfx/0.gfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNS0x
 Mi0yMSAxNDo1NDoxNyIscmV2aXNpb249MTFdXWx6NADgAAAAWTEAAPMhe1swXT17Ym1wPXB4dQBD
@@ -360,15 +389,15 @@ MgAMHzQyACz-GAoKBDAYcBhQGRcfDzAZFx4QGlcfFxpXHRAbFx8NMBsXHFAfDHAWMFQAGvYCCAoE
 AF8gAA5WHgY-DgYeBj0EAL9WHgY3Bh5GDhBOEFMACx442AAPMQD-------------------------
 --------------------------------------8TUG09OH19
 :: map/.info.pod
---[[pod,created="2025-11-03 11:55:22",modified="2025-12-21 21:31:12"]]
+--[[pod,created="2025-11-03 11:55:22",modified="2025-12-21 23:10:39"]]
 :: map/0.map
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNS0x
 Mi0yMSAxNDoxMjo0MyIscmV2aXNpb249Ml1dbHo0AEsAAABOAAAA8Rx7e2JtcD1weHUATIAgIAD-
 AAD---8DLGhpZGRlbj1mYWxzZSxwYW5feD0wCADCeT0wLHRpbGVfaD04CQDAdz04LHpvb209MX19
 :: p8_roms/.info.pod
---[[pod,created="2025-12-20 23:08:11",modified="2025-12-21 21:31:12"]]
+--[[pod,created="2025-12-20 23:08:11",modified="2025-12-21 23:10:39"]]
 :: p8_roms/tests/.info.pod
---[[pod,created="2025-12-20 23:13:01",modified="2025-12-21 21:31:12"]]
+--[[pod,created="2025-12-20 23:13:01",modified="2025-12-21 23:10:39"]]
 :: p8_roms/tests/cartdata.p8
 b64$LS1bW3BvZCxhdXRob3I9IkFzdHJhbHNwYXJ2Iixtb2RpZmllZD0iMjAyNS0xMi0yMSAxNDow
 NTozNSIsbm90ZXM9IlRlc3QgZm9yIGNhcnRkYXRhLCBkZ2V0LCBkc2V0XG5JbmNsdWRlcyBlcnJv
@@ -1914,13 +1943,11 @@ MDAKX19zZnhfXwowMDAxMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAw
 MDAyMTEwMDIyMTAwMjIxMDAwMDAwMDIzMTAwMjQxMDAyNTEwMDAwMDAwMjYxMDAyODEwMDJhMTAw
 MmIxMDAyZDEwMDMwMTAwMzQxMDAzOTEwMDNjMTAwM2QxMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAw
 MDAwMDAwMDAK
-:: p8functs/.info.pod
---[[pod,created="2025-12-20 22:30:21",modified="2025-12-21 21:31:12"]]
 :: sfx/.info.pod
---[[pod,created="2025-11-03 11:55:22",modified="2025-12-21 21:31:12"]]
+--[[pod,created="2025-11-03 11:55:22",modified="2025-12-21 23:10:39"]]
 :: sfx/0.sfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI0LTA4LTEyIDE0OjI1OjIzIixtb2RpZmllZD0iMjAyNS0x
-Mi0yMSAxMjo0NjoxMCIscmV2aXNpb249MTE1XV1sejQAqwEAAEIIAAD-EHB4dQADKAAABAAED0AQ
+Mi0yMSAyMTo1NTowNiIscmV2aXNpb249MTE2XV1sejQAqwEAAEIIAAD-EHB4dQADKAAABAAED0AQ
 Ag4AAaABIAKgDgAPEAAN8P8BAOz-P8oBEAYPIBABIAEgAfAAAhACDBABIA8hIAEwDvDDDygP--DG
 D-gKD-8PgA-3Dw0BcA9wDzgPeA84DA90D3IPaQ9hD24PZw9sD2UwARAGDEgAAW8PciAC8L9LAAz7
 AmkPbA90D2UPZAwPcw9hD3cQTgAVDU4AH4CXAAwBPwAfgD8ABh-APwAOr3EPdQ9hD3IPZVBFAAYf
