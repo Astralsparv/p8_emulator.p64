@@ -1,5 +1,5 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 21:10:41",prog="bbs://strawberry_src.p64",revision=546,xstickers={}]]
--- core.lua
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 21:33:07",prog="bbs://strawberry_src.p64",revision=549,xstickers={}]]
+include "core/env.lua"
 cdata={}
 
 spritesheet={}

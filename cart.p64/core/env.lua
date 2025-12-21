@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-08 13:49:25",modified="2025-12-20 22:55:48",prog="bbs://strawberry_src.p64",revision=152,xstickers={}]]
+--[[pod_format="raw",created="2025-11-08 13:49:25",modified="2025-12-21 21:33:21",prog="bbs://strawberry_src.p64",revision=154,xstickers={}]]
 local function clone_env(env)
 	local new={}
 	for k, v in pairs(env) do
@@ -8,7 +8,7 @@ local function clone_env(env)
 end
 
 p8env=clone_env(_ENV)
-include "overwritefuncts.lua"
+include "core/p8functs/loader.lua"
 
 local _stat_switch={
 	[1]=stat, --cpu (total)
