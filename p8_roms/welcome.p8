@@ -1,4 +1,4 @@
-pico-8 cartridge // http://www.pico-8.com
+--[[pod,author="Astralsparv, wasdly",modified="2025-12-21 14:05:02",notes="Simple explanation for the cartridge\nAuto-boots in the emulator",title="Welcome",version="1.0"]]pico-8 cartridge // http://www.pico-8.com
 version 43
 __lua__
 function _init()

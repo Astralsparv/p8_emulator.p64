@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-21 13:43:54",prog="bbs://strawberry_src.p64",revision=557,xstickers={}]]
+--[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-21 17:35:06",prog="bbs://strawberry_src.p64",revision=612,xstickers={}]]
 include "fs.lua"
 include "wrangle.lua"
 include "env.lua"
@@ -15,7 +15,7 @@ function _init()
 	if (settings.fullscreen) then
 		window{cursor=0,pauseable=true}
 	else
-		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,cursor=0,pauseable=true}
+		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,cursor=1,pauseable=true}
 	end
 	wrangle()
 	menuitem{id=1,label="Return to CMD",shortcut="Q",action=function() p8=nil end}
@@ -41,7 +41,7 @@ function _update()
 	frame_counter+=1
 	if(not p8)then
 		cls()
-		spr(1,1,1)
+--		spr(1,1,1)
 	else
 		set_draw_target(p8frame)
 		p8._execute()

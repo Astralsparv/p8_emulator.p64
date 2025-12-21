@@ -1,4 +1,4 @@
-pico-8 cartridge // http://www.pico-8.com
+--[[pod,author="Astralsparv",modified="2025-12-21 14:06:02",notes="Drawing sprites & btn() test",title="Simple",version="1.0"]]pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
 function _init()

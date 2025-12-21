@@ -1,4 +1,4 @@
-pico-8 cartridge // http://www.pico-8.com
+--[[pod,author="Astralsparv",modified="2025-12-21 14:05:35",notes="Test for cartdata, dget, dset\nIncludes error tests\nCARTDATA ID: p8emulator",title="Cartdata Test",version="1.0b"]]pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
 mode="init"

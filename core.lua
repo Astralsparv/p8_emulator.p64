@@ -1,20 +1,87 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 14:03:36",prog="bbs://strawberry_src.p64",revision=113,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 17:51:28",prog="bbs://strawberry_src.p64",revision=443,xstickers={}]]
 -- core.lua
 cdata={}
+
+spritesheet={}
+
+local function split(str, sep)
+	local t={}
+	sep=sep or "%s"
+	local pattern = "([^"..sep.."]+)"
+	for part in str:gmatch(pattern) do
+		table.insert(t, part)
+	end
+	return t
+end
+
+local function ripGFF(file) --sprite flags
+	local gff=extract_section(file,"__gff__")
+	if (gff==nil) return
+	gff=split(gff,"\n")
+	
+	for sp=0, 255 do
+		local y=1
+		if (sp>=128) y=2
+		local i=(sp%128)*2+1
+		local hex=gff[y]:sub(i,i+1)
+		fset(sp,tonumber(hex,16))
+	end
+end
 
 local function ripSpritesheet(file)
 	local gfx=extract_section(file,"__gfx__")or ""
 	gfx=gfx:gsub("\n","")
+	
 	--load spritesheet (credits to @pancelor)
 	local sizestr=string.format("%02x%02x",mid(0,255,128),mid(0,255,128))
-	return userdata("[gfx]"..sizestr..gfx.."[/gfx]")
+	spritesheet=userdata("[gfx]"..sizestr..gfx.."[/gfx]")
+	
+	for i=0, 255 do
+		local x,y=(i%16)*8,flr(i/16)*8
+		local sprUD=userdata("u8",8,8)
+		spritesheet:blit(sprUD,x,y,0,0,8,8)
+		set_spr(i,sprUD)
+	end
+	return spritesheet
 end
 
 local function ripMap(file)
-	local map=extract_section(file,"__map__")or ""
+	spritesheet=spritesheet or ripSpritesheet(file)
+	local map=extract_section(file,"__map__")
+	if (not map) return nil
 	map=map:gsub("\n","")
-	local sizestr=string.format("%02x%02x",mid(0,255,128),mid(0,255,128))
-	return userdata("[gfx]"..sizestr..gfx.."[/gfx]")
+	local ud=userdata("i16",128,64)
+	--maps == i16
+	
+	--load top half from __map__
+	for y=0, 31 do
+		for x=0, 127 do
+			local i=(y*128+x)*2+1
+			local hex=map:sub(i,i+1)
+			local tile=tonumber(hex,16) or 0 --base 16
+			ud:set(x,y,tile)
+		end
+	end
+	
+	--load bottom from __gfx__
+	--1 pixel = 4 bits (0-15), so half a byte
+	--spritesheet:get(x,y) == gets two pixels because get returns 1 byte
+	
+	for y=32,63 do
+		local sy=64+(y-32)
+		for x=0,127 do
+			--1 byte = 1 tile
+			--2px = 1 tile
+			local bx=x\2
+			local b=tostr(spritesheet:get(bx, sy))..tostr(spritesheet:get(bx+1,sy))
+			
+			local tile=tonumber(b,16) or 0
+
+			ud:set(x,y,tile)
+		end
+	end
+	
+	return ud
 end
 
 function load_p8(path)
@@ -41,16 +108,20 @@ function load_p8(path)
 	for k,v in pairs(p8env) do env[k]=v end
 	env._menuitems={}
 	env._time=0
-	env._spritesheet=ripSpritesheet(file)
-	env.spr=function(i,x,y,w,h,fx,fy)w=(w or 1)*8 h=(h or 1)*8 local bx=(fx and 1) or 0 local by=(fy and 1) or 0 sspr(env._spritesheet,(i%16)*8,flr(i/16)*8,w,h,x+bx*w,y+by*h,w*(1-2*bx),h*(1-2*by))end
-	env.sspr=function(sx,sy,sw,sh,dx,dy,dw,dh,fw,fh)sspr(env._spritesheet,sx,sy,sw,sh,dx,dy,dw,dh,fw,fh)end
+	spritesheet=ripSpritesheet(file)
+	ripGFF(file)
+	memmap(ripMap(file,spritesheet),0x100000)
+--	env.spr=function(i,x,y,w,h,fx,fy)w=(w or 1)*8 h=(h or 1)*8 local bx=(fx and 1) or 0 local by=(fy and 1) or 0 sspr(spritesheet,(i%16)*8,flr(i/16)*8,w,h,x+bx*w,y+by*h,w*(1-2*bx),h*(1-2*by))end
+--	env.sspr=function(sx,sy,sw,sh,dx,dy,dw,dh,fw,fh)sspr(spritesheet,sx,sy,sw,sh,dx,dy,dw,dh,fw,fh)end
 	env.time=function()return env._time end
 	env.t=env.time
 	
 	--compile and run code
 	local fn,err=load(code,path,"t",env)
 	if(not fn)error("compile error: "..err)
+	set_draw_target(p8frame)
 	fn()
+	set_draw_target()
 	
 	--check `_update` and/or `_draw`
 	if(env._update60)then
