@@ -162,7 +162,7 @@ function loadCartridge(path)
 	if(p8)window{title=p8.name}
 end
 :: main.lua
---[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-21 23:08:29",prog="bbs://strawberry_src.p64",revision=662,xstickers={}]]
+--[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-21 23:30:19",prog="bbs://strawberry_src.p64",revision=663,xstickers={}]]
 include "fs.lua"
 include "wrangle.lua"
 include "core/core.lua"
@@ -177,7 +177,7 @@ function _init()
 	if (settings.fullscreen) then
 		window{cursor=0,pauseable=true}
 	else
-		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,pauseable=true,cursor=0}
+		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,pauseable=true}
 	end
 	wrangle()
 	
@@ -274,9 +274,9 @@ function wrangle()
 	}
 end
 :: .info.pod
---[[pod,author="wasdly, Astralsparv",created="2025-12-21 21:27:01",icon=userdata("u8",16,16,"00000000000000000000000000000000000000000000000000000000000000000000000000000001010000000000000000000000000001080801000000000000000000000001010808010100000000000000000001090907070f0f01000000000000000101090907070f0f01010000000000010a0a0707070707070e0e0100000000010a0a0707070707070e0e01000000000001010b0b07070d0d010100000000000000010b0b07070d0d0100000000000000000001010c0c01010000000000000000000000010c0c01000000000000000000000000000101000000000000000000000000000000000000000000000000000000000000000000000000000000"),modified="2025-12-21 23:24:44",notes="Pico-8 emulator for Picotron\n\n/appdata/p8_emulator/",runtime=24,title="P8 Runner",version="0.1.0b",workspaces={{location="main.lua#4",workspace_index=1},{location="core/core.lua#211",workspace_index=1},{location="autoboot.lua#1",workspace_index=1},{location="core/p8functs/sprites.lua#17",workspace_index=1},{location="sfx/0.sfx",workspace_index=4}}]]
+--[[pod,author="wasdly, Astralsparv",created="2025-12-21 21:27:01",icon=userdata("u8",16,16,"00000000000000000000000000000000000000000000000000000000000000000000000000000001010000000000000000000000000001080801000000000000000000000001010808010100000000000000000001090907070f0f01000000000000000101090907070f0f01010000000000010a0a0707070707070e0e0100000000010a0a0707070707070e0e01000000000001010b0b07070d0d010100000000000000010b0b07070d0d0100000000000000000001010c0c01010000000000000000000000010c0c01000000000000000000000000000101000000000000000000000000000000000000000000000000000000000000000000000000000000"),modified="2025-12-21 23:30:26",notes="Pico-8 emulator for Picotron\n\n/appdata/p8_emulator/",runtime=24,title="P8 Runner",version="0.1.0b",workspaces={{location="main.lua#15",workspace_index=1},{location="core/core.lua#211",workspace_index=1},{location="autoboot.lua#1",workspace_index=1},{location="core/p8functs/sprites.lua#17",workspace_index=1},{location="sfx/0.sfx",workspace_index=4}}]]
 :: core/.info.pod
---[[pod,created="2025-12-21 21:31:29",modified="2025-12-21 23:24:44"]]
+--[[pod,created="2025-12-21 21:31:29",modified="2025-12-21 23:30:26"]]
 :: core/core.lua
 b64$LS1bW3BvZF9mb3JtYXQ9InJhdyIsY3JlYXRlZD0iMjAyNS0xMS0xOSAxODozNDoxNCIsbW9k
 aWZpZWQ9IjIwMjUtMTItMjEgMjM6MjQ6MzYiLHByb2c9ImJiczovL3N0cmF3YmVycnlfc3JjLnA2
@@ -379,9 +379,9 @@ YWwgYjA9ZmlsZXN0cjpmaW5kKCJcbl9fWyV3X10rX19cbiIsYTErMSkKCWxvY2FsIGkwPWExKzEK
 CWxvY2FsIGkxPWIwIGFuZCAoYjAtMSlvciAjZmlsZXN0cgoJcmV0dXJuIGZpbGVzdHI6c3ViKGkw
 LGkxKQplbmQ=
 :: core/p8functs/.info.pod
---[[pod,created="2025-12-20 22:30:21",modified="2025-12-21 23:24:44"]]
+--[[pod,created="2025-12-20 22:30:21",modified="2025-12-21 23:30:26"]]
 :: gfx/.info.pod
---[[pod,created="2025-11-03 11:55:22",modified="2025-12-21 23:24:44"]]
+--[[pod,created="2025-11-03 11:55:22",modified="2025-12-21 23:30:26"]]
 :: gfx/0.gfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNS0x
 Mi0yMSAxNDo1NDoxNyIscmV2aXNpb249MTFdXWx6NADgAAAAWTEAAPMhe1swXT17Ym1wPXB4dQBD
@@ -541,15 +541,15 @@ P94K-f3SNf39-eQK-dI-ygrCP8oK-f3GO8IKyDX9-f3kCv3SP8oKwj-KCv39xjvCCsg1-f395Ar9
 -eQK-f39-cY1-f395Ar9-f39xjX9-f39-f39-f39-f39-f39-f39-f39-f39-f39-f39-f39-f39
 -f39-f39-f39-f39-f39-f39-AAAAAAAAAAB
 :: map/.info.pod
---[[pod,created="2025-11-03 11:55:22",modified="2025-12-21 23:24:44"]]
+--[[pod,created="2025-11-03 11:55:22",modified="2025-12-21 23:30:26"]]
 :: map/0.map
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNS0x
 Mi0yMSAxNDoxMjo0MyIscmV2aXNpb249Ml1dbHo0AEsAAABOAAAA8Rx7e2JtcD1weHUATIAgIAD-
 AAD---8DLGhpZGRlbj1mYWxzZSxwYW5feD0wCADCeT0wLHRpbGVfaD04CQDAdz04LHpvb209MX19
 :: p8_roms/.info.pod
---[[pod,created="2025-12-20 23:08:11",modified="2025-12-21 23:24:44"]]
+--[[pod,created="2025-12-20 23:08:11",modified="2025-12-21 23:30:26"]]
 :: p8_roms/tests/.info.pod
---[[pod,created="2025-12-20 23:13:01",modified="2025-12-21 23:24:44"]]
+--[[pod,created="2025-12-20 23:13:01",modified="2025-12-21 23:30:26"]]
 :: p8_roms/tests/cartdata.p8
 b64$LS1bW3BvZCxhdXRob3I9IkFzdHJhbHNwYXJ2Iixtb2RpZmllZD0iMjAyNS0xMi0yMSAxNDow
 NTozNSIsbm90ZXM9IlRlc3QgZm9yIGNhcnRkYXRhLCBkZ2V0LCBkc2V0XG5JbmNsdWRlcyBlcnJv
@@ -2096,7 +2096,7 @@ MDAyMTEwMDIyMTAwMjIxMDAwMDAwMDIzMTAwMjQxMDAyNTEwMDAwMDAwMjYxMDAyODEwMDJhMTAw
 MmIxMDAyZDEwMDMwMTAwMzQxMDAzOTEwMDNjMTAwM2QxMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAw
 MDAwMDAwMDAK
 :: sfx/.info.pod
---[[pod,created="2025-11-03 11:55:22",modified="2025-12-21 23:24:44"]]
+--[[pod,created="2025-11-03 11:55:22",modified="2025-12-21 23:30:26"]]
 :: sfx/0.sfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI0LTA4LTEyIDE0OjI1OjIzIixtb2RpZmllZD0iMjAyNS0x
 Mi0yMSAyMTo1NTowNiIscmV2aXNpb249MTE2XV1sejQAqwEAAEIIAAD-EHB4dQADKAAABAAED0AQ

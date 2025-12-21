@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-21 23:08:29",prog="bbs://strawberry_src.p64",revision=662,xstickers={}]]
+--[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-21 23:30:19",prog="bbs://strawberry_src.p64",revision=663,xstickers={}]]
 include "fs.lua"
 include "wrangle.lua"
 include "core/core.lua"
@@ -13,7 +13,7 @@ function _init()
 	if (settings.fullscreen) then
 		window{cursor=0,pauseable=true}
 	else
-		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,pauseable=true,cursor=0}
+		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,pauseable=true}
 	end
 	wrangle()
 	
