@@ -1,11 +1,18 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 13:47:48",prog="bbs://strawberry_src.p64",revision=107,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 14:03:36",prog="bbs://strawberry_src.p64",revision=113,xstickers={}]]
 -- core.lua
 cdata={}
 
-local function spritesheet(file)
+local function ripSpritesheet(file)
 	local gfx=extract_section(file,"__gfx__")or ""
 	gfx=gfx:gsub("\n","")
 	--load spritesheet (credits to @pancelor)
+	local sizestr=string.format("%02x%02x",mid(0,255,128),mid(0,255,128))
+	return userdata("[gfx]"..sizestr..gfx.."[/gfx]")
+end
+
+local function ripMap(file)
+	local map=extract_section(file,"__map__")or ""
+	map=map:gsub("\n","")
 	local sizestr=string.format("%02x%02x",mid(0,255,128),mid(0,255,128))
 	return userdata("[gfx]"..sizestr..gfx.."[/gfx]")
 end
@@ -16,7 +23,7 @@ function load_p8(path)
 		return nil
 	end
 	
-	local file=fetch(path)
+	local file=fetch(path,{raw_str=true})
 	if (not file) then
 		notify("could not fetch: "..path.." - try clearing metadata") return nil
 	end
@@ -34,7 +41,7 @@ function load_p8(path)
 	for k,v in pairs(p8env) do env[k]=v end
 	env._menuitems={}
 	env._time=0
-	env._spritesheet=spritesheet(file)
+	env._spritesheet=ripSpritesheet(file)
 	env.spr=function(i,x,y,w,h,fx,fy)w=(w or 1)*8 h=(h or 1)*8 local bx=(fx and 1) or 0 local by=(fy and 1) or 0 sspr(env._spritesheet,(i%16)*8,flr(i/16)*8,w,h,x+bx*w,y+by*h,w*(1-2*bx),h*(1-2*by))end
 	env.sspr=function(sx,sy,sw,sh,dx,dy,dw,dh,fw,fh)sspr(env._spritesheet,sx,sy,sw,sh,dx,dy,dw,dh,fw,fh)end
 	env.time=function()return env._time end
