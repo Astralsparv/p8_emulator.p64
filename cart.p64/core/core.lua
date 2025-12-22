@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 02:15:41",prog="bbs://strawberry_src.p64",revision=678,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 03:11:58",prog="bbs://strawberry_src.p64",revision=753,xstickers={}]]
 include "core/env.lua"
 
 local _time=0
@@ -96,6 +96,30 @@ local function ripMap(file)
 	return ud
 end
 
+local function ripLua(file)
+	local lua=extract_section(file,"__lua__")
+	local nextCode = 128
+	local mapping = {}
+	lua=lua:gsub("//", "--") --pico8 supports // as a comment
+	
+	local pico8_pt = {
+		["Ä"]=128, ["Å"]=129, ["Ç"]=130, ["É"]=131,
+		["Ñ"]=132, ["Ö"]=133, ["Ü"]=134, ["á"]=135,
+		["à"]=136, ["â"]=137, ["ä"]=138, ["ã"]=139,
+		["å"]=140, ["ç"]=141, ["é"]=142, ["è"]=143,
+		["ê"]=144, ["ë"]=145, ["í"]=146, ["ì"]=147,
+		["î"]=148, ["ï"]=149, ["ñ"]=150, ["ó"]=151,
+		["ò"]=152, ["ô"]=153
+		-- figure out katakana ones
+	}
+	
+	for glyph, replacement in pairs(pico8_pt) do
+		lua=lua:gsub(glyph, string.char(replacement))
+	end
+	
+	return lua
+end
+
 --todo: i hate you, i hope you get turned into paper and ripped
 local function ripSFX(file)
 	local sfx=extract_section(file,"__sfx__")
@@ -152,7 +176,7 @@ function load_p8(path)
 	end
 	
 	--extract sections
-	local code=extract_section(file,"__lua__")or file
+	local code=ripLua(file)
 	
 	if code:find("%f[%a]goto%f[%A]") then
 		notify("'goto' is not supported in P8 Runner")
@@ -172,7 +196,12 @@ function load_p8(path)
 	--compile and run code
 	local fn,err=load(code,path,"t",env)
 	
-	if(not fn) printh("compile error: "..err) error("compile error: "..err)
+	if(not fn) then
+		store("/ram/lua.lua",code)
+		open("/ram/lua.lua")
+		printh("compile error: "..err)
+		error("compile error: "..err)
+	end
 	srand(flr(rnd(0x7fff)))
 	
 	_time=0
