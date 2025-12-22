@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-12-21 13:10:28",modified="2025-12-21 13:16:04",revision=9]]
+--[[pod_format="raw",created="2025-12-21 13:10:28",modified="2025-12-22 17:08:58",revision=11]]
 local root="/appdata/p8_emulator/"
 fs={
 	cartdata="cartdata/"
@@ -11,7 +11,8 @@ end
 
 --also handles updates to settings!
 local default_settings={
-	fullscreen=false
+	fullscreen=false,
+	ripTitle=true
 }
 
 settings=fetch(root.."settings.pod") or {}

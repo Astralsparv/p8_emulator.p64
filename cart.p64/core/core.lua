@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 15:59:29",prog="bbs://strawberry_src.p64",revision=775,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 17:08:26",prog="bbs://strawberry_src.p64",revision=792,xstickers={}]]
 include "core/env.lua"
 
 local _time=0
@@ -6,6 +6,8 @@ local frame_counter=0
 wantedFramerate=30 --global, needed by stat
 
 spritesheet={}
+
+local cartTitle=""
 
 local function split(str, sep)
 	local t={}
@@ -103,6 +105,14 @@ local function ripLua(sections)
 	local nextCode = 128
 	local mapping = {}
 	lua=lua:gsub("//", "--") --pico8 supports // as a comment
+	if (settings.ripTitle) then
+		local nl=lua:split("\n",false)
+		if (nl[2]:sub(1,2)=="--") then
+			cartTitle=nl[2]:sub(3,#nl[2])
+			if (cartTitle:sub(1,1)==" ") cartTitle=cartTitle:sub(2,#cartTitle)
+		end
+		nl=nil
+	end
 	
 --	local pico8_pt = {
 --		["Ä"]=128, ["Å"]=129, ["Ç"]=130, ["É"]=131,
@@ -177,6 +187,7 @@ function load_p8(path)
 		notify("could not fetch: "..path) return nil
 	end
 	
+	cartTitle=(fetch_metadata(path) or {}).title or path:basename()
 	--extract sections
 	
 	local sections=extract_sections(file)
@@ -253,6 +264,7 @@ function load_p8(path)
 	if(env._init)env._init()
 	
 	p8path=path
+	window{title=cartTitle}
 	return env
 end
 
