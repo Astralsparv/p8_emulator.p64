@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 15:53:36",prog="bbs://strawberry_src.p64",revision=770,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 15:59:29",prog="bbs://strawberry_src.p64",revision=775,xstickers={}]]
 include "core/env.lua"
 
 local _time=0
@@ -41,7 +41,7 @@ local function ripSpritesheet(section)
 	spritesheet=userdata("u8",128,128)
 	
 	for y=0,127 do
-		local line=gfx[y+2] or ""
+		local line=gfx[y+1] or ""
 		for x=0,127 do
 			local c=line:sub(x+1, x+1) or "0"
 			spritesheet:set(x, y, tonum("0x"..c))
@@ -269,6 +269,9 @@ function extract_sections(file)
 			content=file:sub(e+1,next_s-1)
 		else
 			content=file:sub(e+1)
+		end
+		if (content:sub(1,1)=="\n") then
+			content=content:sub(2)
 		end
 		sections[header]=content
 		last_pos=e+1
