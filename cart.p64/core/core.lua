@@ -1,9 +1,9 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 01:42:14",prog="bbs://strawberry_src.p64",revision=658,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 01:58:06",prog="bbs://strawberry_src.p64",revision=670,xstickers={}]]
 include "core/env.lua"
 
 local _time=0
 local frame_counter=0
-local wantedFramerate=30
+wantedFramerate=30 --global, needed by stat
 
 spritesheet={}
 
@@ -213,6 +213,7 @@ function load_p8(path)
 			_time+=0.0333 --still do this?
 		end
 	end
+--	wantedFramerate=300
 	
 	if(env._init)env._init()
 	
@@ -233,7 +234,7 @@ local acc=0
 function update_p8()
 	frame_counter+=1
 	acc+=wantedFramerate
-	if (acc>=frame_counter) then
+	while (acc>=60) do
 		acc-=60 --pt fps
 		set_draw_target(p8frame)
 		p8._execute()

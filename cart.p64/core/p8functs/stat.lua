@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-12-22 00:31:06",modified="2025-12-22 01:35:19",revision=97]]
+--[[pod_format="raw",created="2025-12-22 00:31:06",modified="2025-12-22 01:49:47",revision=103]]
 local function getTime(wanted,utc)
 	local prefix=utc and "!" or ""
 	if (wanted=="year") then
@@ -25,8 +25,8 @@ local stats={
 	[4]={get_clipboard},
 	[5]={"43"}, --0.2.7
 	[6]={""}, --arbritrary - Parameter string from a third-party load
-	[7]={function() local res=stat(7)/2 end}, --should be correct, untested (emulator runs at halfspeed)
---	[8]= --need to add
+	[7]={function() return flr(stat(7)/(60/wantedFramerate)) end}, --should be correct, untested
+	[8]={function() return wantedFramerate end}, --need to add
 	[10]={0}, --unknown stat
 	[11]={1}, --amount of displays?
 	
