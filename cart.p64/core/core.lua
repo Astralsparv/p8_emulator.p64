@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 01:58:06",prog="bbs://strawberry_src.p64",revision=670,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 02:15:41",prog="bbs://strawberry_src.p64",revision=678,xstickers={}]]
 include "core/env.lua"
 
 local _time=0
@@ -153,7 +153,7 @@ function load_p8(path)
 	
 	--extract sections
 	local code=extract_section(file,"__lua__")or file
-	code=code:gsub("‹","0"):gsub("‘","1"):gsub("”","2"):gsub("ƒ","3")
+	
 	if code:find("%f[%a]goto%f[%A]") then
 		notify("'goto' is not supported in P8 Runner")
 		return nil
@@ -171,7 +171,8 @@ function load_p8(path)
 	
 	--compile and run code
 	local fn,err=load(code,path,"t",env)
-	if(not fn)error("compile error: "..err)
+	
+	if(not fn) printh("compile error: "..err) error("compile error: "..err)
 	srand(flr(rnd(0x7fff)))
 	
 	_time=0
@@ -190,7 +191,7 @@ function load_p8(path)
 		env._execute=function()
 			env._update60()
 			env._draw()
-			env._time+=0.0167
+			_time+=0.0167
 		end
 	elseif(env._update)then
 		env._draw=env._draw or function() end
