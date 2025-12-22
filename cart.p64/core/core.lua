@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 03:11:58",prog="bbs://strawberry_src.p64",revision=753,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 15:53:36",prog="bbs://strawberry_src.p64",revision=770,xstickers={}]]
 include "core/env.lua"
 
 local _time=0
@@ -17,8 +17,9 @@ local function split(str, sep)
 	return t
 end
 
-local function ripGFF(file) --sprite flags
-	local gff=extract_section(file,"__gff__")
+local function ripGFF(section) --sprite flags
+	local gff=section.gff
+--	local gff=extract_section(file,"__gff__")
 	if (gff==nil) return
 	gff=split(gff,"\n")
 	
@@ -31,8 +32,9 @@ local function ripGFF(file) --sprite flags
 	end
 end
 
-local function ripSpritesheet(file)
-	local gfx=extract_section(file,"__gfx__")
+local function ripSpritesheet(section)
+	local gfx=section.gfx
+--	local gfx=extract_section(file,"__gfx__")
 	if (not gfx) return userdata("u8",128,128)
 	gfx=gfx:split("\n",false)
 	
@@ -55,9 +57,8 @@ local function ripSpritesheet(file)
 	return spritesheet
 end
 
-local function ripMap(file)
-	spritesheet=spritesheet or ripSpritesheet(file)
-	local map=extract_section(file,"__map__")
+local function ripMap(sections,spritesheet)
+	local map=sections.map
 	if (not map) return nil
 	map=map:gsub("\n","")
 	local ud=userdata("i16",128,64)
@@ -96,26 +97,27 @@ local function ripMap(file)
 	return ud
 end
 
-local function ripLua(file)
-	local lua=extract_section(file,"__lua__")
+local function ripLua(sections)
+--	local lua=extract_section(file,"__lua__")
+	local lua=sections.lua
 	local nextCode = 128
 	local mapping = {}
 	lua=lua:gsub("//", "--") --pico8 supports // as a comment
 	
-	local pico8_pt = {
-		["Ä"]=128, ["Å"]=129, ["Ç"]=130, ["É"]=131,
-		["Ñ"]=132, ["Ö"]=133, ["Ü"]=134, ["á"]=135,
-		["à"]=136, ["â"]=137, ["ä"]=138, ["ã"]=139,
-		["å"]=140, ["ç"]=141, ["é"]=142, ["è"]=143,
-		["ê"]=144, ["ë"]=145, ["í"]=146, ["ì"]=147,
-		["î"]=148, ["ï"]=149, ["ñ"]=150, ["ó"]=151,
-		["ò"]=152, ["ô"]=153
-		-- figure out katakana ones
-	}
+--	local pico8_pt = {
+--		["Ä"]=128, ["Å"]=129, ["Ç"]=130, ["É"]=131,
+--		["Ñ"]=132, ["Ö"]=133, ["Ü"]=134, ["á"]=135,
+--		["à"]=136, ["â"]=137, ["ä"]=138, ["ã"]=139,
+--		["å"]=140, ["ç"]=141, ["é"]=142, ["è"]=143,
+--		["ê"]=144, ["ë"]=145, ["í"]=146, ["ì"]=147,
+--		["î"]=148, ["ï"]=149, ["ñ"]=150, ["ó"]=151,
+--		["ò"]=152, ["ô"]=153
+--		-- figure out katakana ones
+--	}
 	
-	for glyph, replacement in pairs(pico8_pt) do
-		lua=lua:gsub(glyph, string.char(replacement))
-	end
+--	for glyph, replacement in pairs(pico8_pt) do
+--		lua=lua:gsub(glyph, string.char(replacement))
+--	end
 	
 	return lua
 end
@@ -176,7 +178,10 @@ function load_p8(path)
 	end
 	
 	--extract sections
-	local code=ripLua(file)
+	
+	local sections=extract_sections(file)
+	
+	local code=ripLua(sections)
 	
 	if code:find("%f[%a]goto%f[%A]") then
 		notify("'goto' is not supported in P8 Runner")
@@ -187,9 +192,9 @@ function load_p8(path)
 	local env={}
 	for k,v in pairs(p8env) do env[k]=v end
 	env._menuitems={}
-	spritesheet=ripSpritesheet(file)
-	ripGFF(file)
-	memmap(ripMap(file,spritesheet),0x100000)
+	spritesheet=ripSpritesheet(sections)
+	ripGFF(sections)
+	memmap(ripMap(sections,spritesheet),0x100000)
 	env.time=function()return _time end
 	env.t=env.time
 	
@@ -197,8 +202,8 @@ function load_p8(path)
 	local fn,err=load(code,path,"t",env)
 	
 	if(not fn) then
-		store("/ram/lua.lua",code)
-		open("/ram/lua.lua")
+--		store("/ram/lua.lua",code)
+--		open("/ram/lua.lua")
 		printh("compile error: "..err)
 		error("compile error: "..err)
 	end
@@ -251,14 +256,26 @@ function load_p8(path)
 	return env
 end
 
-function extract_section(filestr,header)
-	local a0,a1=filestr:find(header)
-	if not a0 then return nil end
-	local b0=filestr:find("\n__[%w_]+__\n",a1+1)
-	local i0=a1+1
-	local i1=b0 and (b0-1)or #filestr
-	return filestr:sub(i0,i1)
+function extract_sections(file)
+	local sections={}
+	local pattern="__([%w_]+)__\n?" --section headers
+	local last_pos=1
+	while true do
+		local s,e,header=file:find(pattern,last_pos)
+		if (not s) break
+		local next_s=file:find("__[%w_]+__",e+1)
+		local content
+		if (next_s) then
+			content=file:sub(e+1,next_s-1)
+		else
+			content=file:sub(e+1)
+		end
+		sections[header]=content
+		last_pos=e+1
+	end
+	return sections
 end
+
 
 local acc=0
 function update_p8()
