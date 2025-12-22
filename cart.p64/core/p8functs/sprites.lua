@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-12-21 15:10:09",modified="2025-12-22 01:23:57",revision=92]]
+--[[pod_format="raw",created="2025-12-21 15:10:09",modified="2025-12-22 18:55:31",revision=106]]
 --uses built in spritebank
 --some fixes applied through stuff found in Soupster's code
 --spr(i,x,y,w,h,fx,fy)
@@ -15,4 +15,7 @@ end
 
 p8env.sspr=function(...)
 	return sspr(spritesheet,...)
+end
+p8env.sget=function(x,y)
+	return spritesheet:get(x,y)
 end

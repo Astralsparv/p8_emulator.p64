@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 17:08:26",prog="bbs://strawberry_src.p64",revision=792,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 19:38:55",prog="bbs://strawberry_src.p64",revision=880,xstickers={}]]
 include "core/env.lua"
 
 local _time=0
@@ -6,6 +6,7 @@ local frame_counter=0
 wantedFramerate=30 --global, needed by stat
 
 spritesheet={}
+mapsheet={}
 
 local cartTitle=""
 
@@ -63,8 +64,8 @@ local function ripMap(sections,spritesheet)
 	local map=sections.map
 	if (not map) return nil
 	map=map:gsub("\n","")
-	local ud=userdata("i16",128,64)
-	--maps == i16
+	mapsheet=userdata("u8",128,64)
+	--custom map setup
 	
 	--load top half from __map__
 	for y=0, 31 do
@@ -72,7 +73,7 @@ local function ripMap(sections,spritesheet)
 			local i=(y*128+x)*2+1
 			local hex=map:sub(i,i+1)
 			local tile=tonumber(hex,16) or 0 --base 16
-			ud:set(x,y,tile)
+			mapsheet:set(x,y,tile)
 		end
 	end
 	
@@ -92,42 +93,76 @@ local function ripMap(sections,spritesheet)
 			local high=spritesheet:get(px+1, py)
 			local tile=low|(high << 4)
 
-			ud:set(x,y,tile)
+			mapsheet:set(x,y,tile)
 		end
 	end
 	
 	return ud
 end
 
+local translations={
+	[""]=-2560.5,
+	["–"]=-31455.5,
+	["„"]=32125.5,
+	["‘"]=1,
+	["“"]=6943.5,
+	["˜"]=3855.5,
+	["”"]=2,
+	["ˆ"]=-19008.5,
+	["Ž"]=4,
+	[""]=-20032.5,
+	["€"]=0.5,
+	["’"]=-20128.5,
+	["ƒ"]=3,
+	["…"]=-18402.5,
+	["†"]=-1632.5,
+	["‡"]=20927.5,
+	["‰"]=-26208.5,
+	["Š"]=-20192.5,
+	["‹"]=0,
+	["™"]=21845.5,
+	["—"]=5,
+	["‚"]=20767.5,
+	["•"]=-2624.5,
+	[""]=23130.5,
+	[""]=-25792.5,
+	["Œ"]=-24351.5
+}
+
 local function ripLua(sections)
 --	local lua=extract_section(file,"__lua__")
 	local lua=sections.lua
-	local nextCode = 128
-	local mapping = {}
+	--does conversion stuff
+	store("/ram/lua.lua",lua)
+	lua=fetch("/ram/lua.lua")
+	rm("/ram/lua.lua")
+	local nextCode=128
+	local mapping={}
 	lua=lua:gsub("//", "--") --pico8 supports // as a comment
 	if (settings.ripTitle) then
 		local nl=lua:split("\n",false)
-		if (nl[2]:sub(1,2)=="--") then
-			cartTitle=nl[2]:sub(3,#nl[2])
+		if (nl[1]:sub(1,2)=="--") then
+			cartTitle=nl[1]:sub(3,#nl[1])
 			if (cartTitle:sub(1,1)==" ") cartTitle=cartTitle:sub(2,#cartTitle)
 		end
 		nl=nil
 	end
 	
---	local pico8_pt = {
---		["€"]=128, [""]=129, ["‚"]=130, ["ƒ"]=131,
---		["„"]=132, ["…"]=133, ["†"]=134, ["‡"]=135,
---		["ˆ"]=136, ["‰"]=137, ["Š"]=138, ["‹"]=139,
---		["Œ"]=140, [""]=141, ["Ž"]=142, [""]=143,
---		[""]=144, ["‘"]=145, ["’"]=146, ["“"]=147,
---		["”"]=148, ["•"]=149, ["–"]=150, ["—"]=151,
---		["˜"]=152, ["™"]=153
---		-- figure out katakana ones
---	}
+	--btn(...) btnp(...)
+	lua=lua:gsub("(%f[%w]btn[p]?)%((.-)%)", function(func, arg)
+		for emoji,num in pairs(translations) do
+			arg=arg:gsub(emoji, tostring(num))
+		end
+		return func.."("..arg..")"
+	end)
 	
---	for glyph, replacement in pairs(pico8_pt) do
---		lua=lua:gsub(glyph, string.char(replacement))
---	end
+	--fillp(...)
+	lua=lua:gsub("(%f[%w]fillp?)%((.-)%)", function(func, arg)
+		for emoji,num in pairs(translations) do
+			arg=arg:gsub(emoji, tostring(num))
+		end
+		return func.."("..arg..")"
+	end)
 	
 	return lua
 end
@@ -202,10 +237,11 @@ function load_p8(path)
 	--create env
 	local env={}
 	for k,v in pairs(p8env) do env[k]=v end
-	env._menuitems={}
+	
 	spritesheet=ripSpritesheet(sections)
 	ripGFF(sections)
-	memmap(ripMap(sections,spritesheet),0x100000)
+	ripMap(sections,spritesheet)
+--	memmap(ripMap(sections,spritesheet),0x100000)
 	env.time=function()return _time end
 	env.t=env.time
 	

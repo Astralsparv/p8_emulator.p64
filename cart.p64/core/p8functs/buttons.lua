@@ -1,0 +1,18 @@
+--[[pod_format="raw",created="2025-12-22 17:12:08",modified="2025-12-22 17:22:46",revision=13]]
+--local function fixButton(b)
+--	if (b=="‹") b=0
+--	if (b=="‘") b=1
+--	if (b=="”") b=2
+--	if (b=="ƒ") b=3
+--	if (b=="Ž") b=4
+--	if (b=="—") b=5
+--	return b
+--end
+--
+--p8env.btn=function btn(b,...)
+--	return btn(fixButton(b),...)
+--end
+--
+--p8env.btnp=function btnp(b,...)
+--	return btnp(fixButton(b),...)
+--end
