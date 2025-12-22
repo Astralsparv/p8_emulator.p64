@@ -1,9 +1,10 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-21 23:24:36",prog="bbs://strawberry_src.p64",revision=634,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 01:42:14",prog="bbs://strawberry_src.p64",revision=658,xstickers={}]]
 include "core/env.lua"
 
 local _time=0
-
 local frame_counter=0
+local wantedFramerate=30
+
 spritesheet={}
 
 local function split(str, sep)
@@ -176,6 +177,7 @@ function load_p8(path)
 	_time=0
 	p8frame=userdata("u8",128,128)
 	frame_counter=0
+	wantedFramerate=30
 	fn()
 	
 	set_draw_target(p8frame)
@@ -184,6 +186,7 @@ function load_p8(path)
 	--check `_update` and/or `_draw`
 	if(env._update60)then
 		env._draw=env._draw or function() end
+		wantedFramerate=60
 		env._execute=function()
 			env._update60()
 			env._draw()
@@ -191,23 +194,21 @@ function load_p8(path)
 		end
 	elseif(env._update)then
 		env._draw=env._draw or function() end
+		wantedFramerate=30
 		--is that how time is handled??
 		env._execute=function()
-			frame_counter+=1
-			if(frame_counter%2==0)then
-				env._update()
-				env._draw()
-				_time+=0.0333 
-			end
+			env._update()
+			env._draw()
+			_time+=0.0333
 		end
 	elseif(env._draw)then
+		wantedFramerate=30
 		env._execute=function()
-			if(frame_counter%2==0)then
-				env._draw()
-				_time+=0.0333
-			end
+			env._draw()
+			_time+=0.0333
 		end
 	else
+		wantedFramerate=0
 		env._execute=function()
 			_time+=0.0333 --still do this?
 		end
@@ -226,4 +227,17 @@ function extract_section(filestr,header)
 	local i0=a1+1
 	local i1=b0 and (b0-1)or #filestr
 	return filestr:sub(i0,i1)
+end
+
+local acc=0
+function update_p8()
+	frame_counter+=1
+	acc+=wantedFramerate
+	if (acc>=frame_counter) then
+		acc-=60 --pt fps
+		set_draw_target(p8frame)
+		p8._execute()
+		set_draw_target()
+		updateCartdata()
+	end
 end

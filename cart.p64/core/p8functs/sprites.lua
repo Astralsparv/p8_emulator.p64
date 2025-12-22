@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-12-21 15:10:09",modified="2025-12-21 22:26:27",revision=89]]
+--[[pod_format="raw",created="2025-12-21 15:10:09",modified="2025-12-22 01:23:57",revision=92]]
 --uses built in spritebank
 --some fixes applied through stuff found in Soupster's code
 --spr(i,x,y,w,h,fx,fy)

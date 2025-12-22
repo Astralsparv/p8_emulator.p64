@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-21 23:30:19",prog="bbs://strawberry_src.p64",revision=663,xstickers={}]]
+--[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-22 01:37:56",prog="bbs://strawberry_src.p64",revision=676,xstickers={}]]
 include "fs.lua"
 include "wrangle.lua"
 include "core/core.lua"
@@ -36,10 +36,7 @@ p8frame=userdata("u8",128,128)
 function _update()
 	local factor=2
 	if (p8) then --safety: there should always be a p8
-		set_draw_target(p8frame)
-		p8._execute()
-		set_draw_target()
-		updateCartdata()
+		update_p8()
 		if (settings.fullscreen) then
 			cls()
 			sspr(p8frame,0,0,128,128,112,7,256,256)
