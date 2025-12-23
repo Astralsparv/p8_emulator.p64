@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-22 19:38:55",prog="bbs://strawberry_src.p64",revision=880,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-23 18:27:25",prog="bbs://strawberry_src.p64",revision=920,xstickers={}]]
 include "core/env.lua"
 
 local _time=0
@@ -219,8 +219,10 @@ function load_p8(path)
 	
 	local file=fetch(path,{raw_str=true})
 	if (not file) then
-		notify("could not fetch: "..path) return nil
+		notify("could not fetch: "..path)
+		return nil
 	end
+	include "core/pause_menu.lua"
 	
 	cartTitle=(fetch_metadata(path) or {}).title or path:basename()
 	--extract sections
@@ -229,6 +231,7 @@ function load_p8(path)
 	
 	local code=ripLua(sections)
 	
+	--why?
 	if code:find("%f[%a]goto%f[%A]") then
 		notify("'goto' is not supported in P8 Runner")
 		return nil
@@ -335,7 +338,19 @@ function update_p8()
 	while (acc>=60) do
 		acc-=60 --pt fps
 		set_draw_target(p8frame)
-		p8._execute()
+		
+		if (menu.active) then
+			menu:update()
+			menu:draw()
+		else
+			p8._execute()
+		end
+		fillp()
+		
+		if (btnp(6)) then --i don't think this is right?
+			menu.active=not menu.active
+		end
+		
 		set_draw_target()
 		updateCartdata()
 	end

@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-12-22 00:31:06",modified="2025-12-22 01:49:47",revision=103]]
+--[[pod_format="raw",created="2025-12-22 00:31:06",modified="2025-12-23 16:40:49",revision=108]]
 local function getTime(wanted,utc)
 	local prefix=utc and "!" or ""
 	if (wanted=="year") then
@@ -27,14 +27,14 @@ local stats={
 	[6]={""}, --arbritrary - Parameter string from a third-party load
 	[7]={function() return flr(stat(7)/(60/wantedFramerate)) end}, --should be correct, untested
 	[8]={function() return wantedFramerate end}, --need to add
-	[10]={0}, --unknown stat
+--	[10]={0}, --unknown stat
 	[11]={1}, --amount of displays?
 	
-	--Pause menu location, to add
---	[12]=-1,
---	[13]=-1,
---	[14]=-1,
---	[15]=-1,
+	--Pause menu location
+	[12]={function() return menu.x end},
+	[13]={function() return menu.y end},
+	[14]={function() return menu.x+menu.w-1 end},
+	[15]={function() return menu.y+menu.h-1 end},
 	
 --	[16]= --deprec, need more details
 

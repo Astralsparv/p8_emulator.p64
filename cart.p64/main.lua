@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-22 18:20:08",prog="bbs://strawberry_src.p64",revision=685,xstickers={}]]
+--[[pod_format="raw",created="2025-11-08 13:48:55",modified="2025-12-23 18:24:59",prog="bbs://strawberry_src.p64",revision=690,xstickers={}]]
 include "fs.lua"
 include "wrangle.lua"
 include "core/core.lua"
@@ -11,9 +11,9 @@ p8path=""
 function _init()
 	cmd={}
 	if (settings.fullscreen) then
-		window{cursor=0,pauseable=true}
+		window{cursor=0}
 	else
-		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true,pauseable=true}
+		window{title="P8 Emulator",width=128,height=128,resizeable=false,autofocus=true}
 	end
 	wrangle()
 	
@@ -34,7 +34,6 @@ end
 p8frame=userdata("u8",128,128)
 
 function _update()
-	local factor=2
 	if (p8) then --safety: there should always be a p8
 		update_p8()
 		if (settings.fullscreen) then
