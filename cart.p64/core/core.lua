@@ -1,4 +1,4 @@
---[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-23 18:27:25",prog="bbs://strawberry_src.p64",revision=920,xstickers={}]]
+--[[pod_format="raw",created="2025-11-19 18:34:14",modified="2025-12-24 00:15:39",prog="bbs://strawberry_src.p64",revision=925,xstickers={}]]
 include "core/env.lua"
 
 local _time=0
@@ -148,21 +148,21 @@ local function ripLua(sections)
 		nl=nil
 	end
 	
-	--btn(...) btnp(...)
-	lua=lua:gsub("(%f[%w]btn[p]?)%((.-)%)", function(func, arg)
-		for emoji,num in pairs(translations) do
-			arg=arg:gsub(emoji, tostring(num))
-		end
-		return func.."("..arg..")"
-	end)
-	
-	--fillp(...)
-	lua=lua:gsub("(%f[%w]fillp?)%((.-)%)", function(func, arg)
-		for emoji,num in pairs(translations) do
-			arg=arg:gsub(emoji, tostring(num))
-		end
-		return func.."("..arg..")"
-	end)
+--	--btn(...) btnp(...)
+--	lua=lua:gsub("(%f[%w]btn[p]?)%((.-)%)", function(func, arg)
+--		for emoji,num in pairs(translations) do
+--			arg=arg:gsub(emoji, tostring(num))
+--		end
+--		return func.."("..arg..")"
+--	end)
+--	
+--	--fillp(...)
+--	lua=lua:gsub("(%f[%w]fillp?)%((.-)%)", function(func, arg)
+--		for emoji,num in pairs(translations) do
+--			arg=arg:gsub(emoji, tostring(num))
+--		end
+--		return func.."("..arg..")"
+--	end)
 	
 	return lua
 end
@@ -240,6 +240,7 @@ function load_p8(path)
 	--create env
 	local env={}
 	for k,v in pairs(p8env) do env[k]=v end
+	for k,v in pairs(translations) do env[k]=v end
 	
 	spritesheet=ripSpritesheet(sections)
 	ripGFF(sections)
@@ -252,8 +253,8 @@ function load_p8(path)
 	local fn,err=load(code,path,"t",env)
 	
 	if(not fn) then
---		store("/ram/lua.lua",code)
---		open("/ram/lua.lua")
+		store("/ram/lua.lua",code)
+		open("/ram/lua.lua")
 		printh("compile error: "..err)
 		error("compile error: "..err)
 	end
